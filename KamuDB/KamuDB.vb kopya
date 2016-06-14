@@ -1,0 +1,2391 @@
+﻿Imports System.Data.OleDb
+Imports ADOX
+Imports Kamu.Objects
+
+Public Class DB
+
+    Public ConnectionType As String   'SqlConnection, OleDbConnection
+    Public ConnectionString As String
+    Public AktifDosya As String
+    Public TabloSeti As New DataSet
+    Public ProjectList As Collection
+    Public KamuVeriXMLDosya As String
+
+    Public Function CreateConnectionString(_DataSource As String, _InitialCatalog As String) As String
+        Dim MyConnectionString As String = "Data Source=" + _DataSource + ";Initial Catalog=" + _InitialCatalog + ";Integrated Security=True"
+        ConnectionType = "SqlConnection"
+        Return MyConnectionString
+    End Function
+
+    Public Function CreateConnectionString(_FileName As String) As String
+        Dim MyConnectionString As String = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & _FileName & ";User Id=admin;Password=;"
+        ConnectionType = "OleDbConnection"
+        Return MyConnectionString
+    End Function
+
+    Public Function CreateConnectionString() As String
+        Dim MyConnectionString As String = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & AktifDosya & ";User Id=admin;Password=;"
+        ConnectionType = "OleDbConnection"
+        Return MyConnectionString
+    End Function
+
+    Public Function GetDataTable(ByVal sqlCommand As String) As DataTable
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = sqlCommand
+        connection.Open()
+
+        Dim adapter As OleDbDataAdapter = New OleDbDataAdapter()
+        adapter.SelectCommand = command
+
+        Dim table As New DataTable
+        table.Locale = System.Globalization.CultureInfo.InvariantCulture
+        adapter.Fill(table)
+
+        connection.Close()
+        Return table
+    End Function
+
+    Public Function GetDataTable(ByVal _SQLCommand As String, _ConnectionString As String, _ConnectionType As String) As DataTable
+        Dim MyDataTable As New DataTable
+        Select Case _ConnectionType
+            Case "OleDbConnection"
+                MyDataTable = OleDbGetDataTable(_SQLCommand, _ConnectionString)
+            Case "SqlConnection"
+                MyDataTable = SQLGetDataTable(_SQLCommand, _ConnectionString)
+        End Select
+        Return MyDataTable
+    End Function
+
+    Private Function OleDbGetDataTable(ByVal _SQLCommand As String, _ConnectionString As String) As DataTable
+        Dim connection As New OleDb.OleDbConnection(_ConnectionString)
+        Dim command As OleDb.OleDbCommand = connection.CreateCommand()
+        command.CommandText = _SQLCommand
+        connection.Open()
+
+        Dim adapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter()
+        adapter.SelectCommand = command
+
+        Dim table As New DataTable
+        table.Locale = System.Globalization.CultureInfo.InvariantCulture
+        adapter.Fill(table)
+        adapter = Nothing
+        connection.Close()
+        Return table
+    End Function
+
+    Private Function SQLGetDataTable(ByVal _SQLCommand As String, _ConnectionString As String) As DataTable
+        Dim connection As New SqlClient.SqlConnection(_ConnectionString)
+        Dim command As SqlClient.SqlCommand = connection.CreateCommand()
+        command.CommandText = _SQLCommand
+        connection.Open()
+
+        Dim adapter As New SqlClient.SqlDataAdapter
+        adapter.SelectCommand = command
+
+        Dim table As New DataTable
+        table.Locale = System.Globalization.CultureInfo.InvariantCulture
+        adapter.Fill(table)
+        adapter = Nothing
+        connection.Close()
+        Return table
+    End Function
+
+    Public Function MakeDataSet(strDataSetName As String, strConnectionString As String, strTableDataName As String, strTableDataSQL As String) As DataSet
+        Dim MyDataset As DataSet = New DataSet(strDataSetName)
+        Dim MyDataTable As DataTable = GetDataTable(strTableDataSQL)
+        MyDataTable.TableName = strTableDataName
+        MyDataset.Tables.Add(MyDataTable)
+        Return MyDataset
+    End Function
+
+    Private Function MakeTable(strTableName As String, strConnectionString As String, strSQL As String) As DataTable
+        Dim MyTable As DataTable = New DataTable(strTableName)
+        Try
+            Dim column0 As DataColumn = New DataColumn
+            column0.DataType = System.Type.GetType("System.String")
+            column0.AllowDBNull = True
+            column0.ColumnName = "ID"
+            MyTable.Columns.Add(column0)
+
+            Dim column1 As DataColumn = New DataColumn
+            column1.DataType = System.Type.GetType("System.String")
+            column1.AllowDBNull = True
+            column1.ColumnName = "AD"
+            MyTable.Columns.Add(column1)
+
+            Dim column2 As DataColumn = New DataColumn
+            column2.DataType = System.Type.GetType("System.String")
+            column2.AllowDBNull = True
+            column2.ColumnName = "IL"
+            MyTable.Columns.Add(column2)
+
+            Dim column3 As DataColumn = New DataColumn
+            column3.DataType = System.Type.GetType("System.String")
+            column3.AllowDBNull = True
+            column3.ColumnName = "ILCE"
+            MyTable.Columns.Add(column3)
+
+            Dim column4 As DataColumn = New DataColumn
+            column4.DataType = System.Type.GetType("System.String")
+            column4.AllowDBNull = True
+            column4.ColumnName = "KOY"
+            MyTable.Columns.Add(column4)
+
+            Dim column5 As DataColumn = New DataColumn
+            column5.DataType = System.Type.GetType("System.String")
+            column5.AllowDBNull = True
+            column5.ColumnName = "MAHALLE"
+            MyTable.Columns.Add(column5)
+
+            Dim connection As New OleDb.OleDbConnection(strConnectionString)
+            Dim command As OleDb.OleDbCommand = connection.CreateCommand()
+            command.CommandText = strSQL
+            connection.Open()
+            Dim TreeReader As OleDb.OleDbDataReader = command.ExecuteReader()
+            MyTable.Load(TreeReader)
+
+            TreeReader.Close()
+            TreeReader = Nothing
+            connection.Close()
+            connection = Nothing
+            command = Nothing
+        Catch ex As Exception
+            'MessageBox.Show(ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+        Return MyTable
+    End Function
+
+    Public Function NewProject(_FileName As String, _Project As Proje, _KamuVeriXMLFileName As String) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyCreate As New Create
+            MyCreate.CreateKamuDBFromScratch(_FileName, _KamuVeriXMLFileName, "YENI_VERITABANI")
+
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            MyRowID = FillProjectTable("SELECT * FROM PROJE", MyKamuConnection, _Project)
+            FillTipMalikTable("SELECT * FROM TIP_MALIK", MyKamuConnection, _KamuVeriXMLFileName)
+
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyCreate = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Private Function FillProjectTable(MyQueryString As String, MyKamuConnection As OleDbConnection, _Project As Proje) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow = MyTable.NewRow()
+            MyRow("KOD") = _Project.Kod
+            MyRow("AD") = _Project.Ad
+            MyRow("PROJE_NOTLARI") = _Project.ProjeNotlari
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+
+            MyRow = Nothing
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyCommandBuilder = Nothing
+            MyTable = Nothing
+            MyDataAdapter = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Private Sub FillTipMalikTable(_QueryString As String, _Connection As OleDbConnection, _KamuVeriXMLFileName As String)
+        Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(_QueryString, _Connection))
+        Dim MyTable As New DataTable
+        MyDataAdapter.Fill(MyTable)
+
+        Dim KamuVeri As New DataSet
+        KamuVeri.ReadXml(_KamuVeriXMLFileName)
+        Dim KamuTable As DataTable = KamuVeri.Tables("TIP_MALIK")
+        For Each MyTipRow As DataRow In KamuTable.Rows
+            Dim MyRow As DataRow = MyTable.NewRow()
+            MyRow("ID") = Val(MyTipRow("ID"))
+            MyRow("TIP") = MyTipRow("TIP").ToString
+            MyTable.Rows.Add(MyRow)
+            MyRow = Nothing
+        Next
+
+        Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+        MyCommandBuilder.DataAdapter = MyDataAdapter
+        MyDataAdapter.Update(MyTable)
+
+        MyCommandBuilder = Nothing
+        KamuTable = Nothing
+        KamuVeri = Nothing
+        MyTable = Nothing
+        MyDataAdapter = Nothing
+    End Sub
+
+    Public Function CompactDataBase(_SourceConnectionString As String, _TargetConnectionString As String) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim jro As New JRO.JetEngine
+            jro.CompactDatabase(_SourceConnectionString, _TargetConnectionString)
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function CreateProjectList() As Collection
+        Dim MyProjectList As New Collection()
+        Try
+            Using connection As New OleDb.OleDbConnection(ConnectionString)
+                Dim command As New OleDb.OleDbCommand("SELECT ID, AD FROM PROJE ORDER BY ID", connection)
+                connection.Open()
+                Dim reader As OleDb.OleDbDataReader = command.ExecuteReader()
+                While reader.Read()
+                    MyProjectList.Add(New Proje(CLng(reader("ID")), reader("AD").ToString))
+                End While
+                connection.Close()
+                reader.Close()
+            End Using
+        Catch ex As Exception
+            Return Nothing
+        End Try
+        Return MyProjectList
+    End Function
+
+    Public Function GetParselCollection(_DataTable As DataTable) As Collection
+        Dim MyParseller As New Collection
+        Dim MyMalikler As New Collection
+        Dim MyParsel As New Parsel
+        Dim MyMalik As New Kisi
+        Dim LastAda As String = "-1"
+        Dim LastParsel As String = "-1"
+        For Each MyRow As DataRow In _DataTable.Rows
+            If (LastAda = MyRow("ADA") And LastParsel = MyRow("PARSEL")) Then
+                MyMalik.Adi = MyRow("ADI")
+                MyMalik.Soyadi = MyRow("SOYADI")
+                MyMalik.Baba = MyRow("BABA")
+                If Not IsDBNull(MyRow("PAY")) Then
+                    MyMalik.HissePay = MyRow("PAY")
+                End If
+                If Not IsDBNull(MyRow("PAYDA")) Then
+                    MyMalik.HissePayda = MyRow("PAYDA")
+                End If
+                If Not IsDBNull(MyRow("TAPU_TARIHI")) Then
+                    MyMalik.TapuTarihi = MyRow("TAPU_TARIHI")
+                End If
+                MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString
+                MyMalikler.Add(MyMalik)
+                MyMalik = New Kisi
+            Else
+                If MyMalikler.Count > 0 Then
+                    MyParsel.Malikler = MyMalikler
+                    MyParseller.Add(MyParsel)
+                    MyMalikler = New Collection
+                    MyMalik = New Kisi
+                    MyParsel = New Parsel
+                End If
+                MyParsel.ID = Long.Parse(MyRow("ID"))
+                MyParsel.Il = MyRow("IL").ToString
+                MyParsel.Ilce = MyRow("ILCE").ToString
+                MyParsel.Koy = MyRow("KOY").ToString
+                MyParsel.Mahalle = MyRow("MAHALLE").ToString
+                MyParsel.AdaNo = MyRow("ADA").ToString
+                MyParsel.ParselNo = MyRow("PARSEL").ToString
+                MyParsel.PaftaNo = MyRow("PAFTA").ToString
+                MyParsel.Cinsi = MyRow("CINSI").ToString
+                MyParsel.Mevki = MyRow("MEVKI").ToString
+                MyParsel.Cilt = MyRow("CILT").ToString
+                MyParsel.Sayfa = MyRow("SAYFA").ToString
+                If Not IsDBNull(MyRow("TAPU_ALANI")) Then
+                    MyParsel.TapuAlani = MyRow("TAPU_ALANI")
+                End If
+                If Not IsDBNull(MyRow("DAIMI_IRTIFAK_ALAN")) Then
+                    MyParsel.DaimiIrtifakAlan = MyRow("DAIMI_IRTIFAK_ALAN")
+                End If
+                If Not IsDBNull(MyRow("GECICI_IRTIFAK_ALAN")) Then
+                    MyParsel.GeciciIrtifakAlan = MyRow("GECICI_IRTIFAK_ALAN")
+                End If
+                If Not IsDBNull(MyRow("MULKIYET_ALAN")) Then
+                    MyParsel.MulkiyetAlan = MyRow("MULKIYET_ALAN")
+                End If
+                If Not IsDBNull(MyRow("DAIMI_IRTIFAK_BEDEL")) Then
+                    MyParsel.DaimiIrtifakBedel = MyRow("DAIMI_IRTIFAK_BEDEL")
+                End If
+                If Not IsDBNull(MyRow("GECICI_IRTIFAK_BEDEL")) Then
+                    MyParsel.GeciciIrtifakBedel = MyRow("GECICI_IRTIFAK_BEDEL")
+                End If
+                If Not IsDBNull(MyRow("MULKIYET_BEDEL")) Then
+                    MyParsel.MulkiyetBedel = MyRow("MULKIYET_BEDEL")
+                End If
+                LastAda = MyParsel.AdaNo
+                LastParsel = MyParsel.ParselNo
+                MyMalik.Adi = MyRow("ADI").ToString
+                MyMalik.Soyadi = MyRow("SOYADI").ToString
+                MyMalik.Baba = MyRow("BABA").ToString
+                If Not IsDBNull(MyRow("PAY")) Then
+                    MyMalik.HissePay = MyRow("PAY").ToString
+                End If
+                If Not IsDBNull(MyRow("PAYDA")) Then
+                    MyMalik.HissePayda = MyRow("PAYDA").ToString
+                End If
+                If Not IsDBNull(MyRow("TAPU_TARIHI")) Then
+                    MyMalik.TapuTarihi = MyRow("TAPU_TARIHI")
+                End If
+                MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString
+                MyMalikler.Add(MyMalik)
+                MyMalik = New Kisi
+            End If
+        Next
+        MyParsel.Malikler = MyMalikler
+        MyParseller.Add(MyParsel)
+        Return MyParseller
+    End Function
+
+    Public Function GetMustemilatCollection(_DataTable As DataTable) As Collection
+        Dim MyMustemilatlar As New Collection
+        For Each MyRow As DataRow In _DataTable.Rows
+            Dim MyMustemilat As New Mustemilat
+            MyMustemilat.ID = Long.Parse(MyRow("ID").ToString)
+            If Not IsDBNull(MyRow("PARSEL_ID")) Then
+                MyMustemilat.ParselID = MyRow("PARSEL_ID")
+            End If
+            If Not IsDBNull(MyRow("SAHIP_ID")) Then
+                MyMustemilat.SahipID = MyRow("SAHIP_ID")
+            End If
+            MyMustemilat.Tanim = MyRow("TANIM").ToString
+            If Not IsDBNull(MyRow("ADET")) Then
+                MyMustemilat.Adet = MyRow("ADET")
+            End If
+            If Not IsDBNull(MyRow("FIYAT")) Then
+                MyMustemilat.Fiyat = MyRow("FIYAT")
+            End If
+            If Not IsDBNull(MyRow("MALIK")) Then
+                MyMustemilat.Malik = MyRow("MALIK")
+            End If
+            If Not IsDBNull(MyRow("PAY")) Then
+                MyMustemilat.Pay = MyRow("PAY")
+            End If
+            If Not IsDBNull(MyRow("PAYDA")) Then
+                MyMustemilat.Payda = MyRow("PAYDA")
+            End If
+            If Not IsDBNull(MyRow("ODEME_ID")) Then
+                MyMustemilat.OdemeID = MyRow("ODEME_ID")
+            End If
+            MyMustemilatlar.Add(MyMustemilat)
+        Next
+        Return MyMustemilatlar
+    End Function
+
+    Public Function GetMevsimlikCollection(_DataTable As DataTable) As Collection
+        Dim MyMevsimlikler As New Collection
+        For Each MyRow As DataRow In _DataTable.Rows
+            Dim MyMevsimlik As New Mevsimlik
+            MyMevsimlik.ID = Long.Parse(MyRow("ID").ToString)
+            If Not IsDBNull(MyRow("PARSEL_ID")) Then
+                MyMevsimlik.ParselID = MyRow("PARSEL_ID")
+            End If
+            If Not IsDBNull(MyRow("SAHIP_ID")) Then
+                MyMevsimlik.SahipID = MyRow("SAHIP_ID")
+            End If
+            MyMevsimlik.Tanim = MyRow("TANIM").ToString
+            If Not IsDBNull(MyRow("ALAN")) Then
+                MyMevsimlik.Alan = MyRow("ALAN")
+            End If
+            If Not IsDBNull(MyRow("BEDEL")) Then
+                MyMevsimlik.Bedel = MyRow("BEDEL")
+            End If
+            If Not IsDBNull(MyRow("MALIK")) Then
+                MyMevsimlik.Malik = MyRow("MALIK")
+            End If
+            If Not IsDBNull(MyRow("PAY")) Then
+                MyMevsimlik.Pay = MyRow("PAY")
+            End If
+            If Not IsDBNull(MyRow("PAYDA")) Then
+                MyMevsimlik.Payda = MyRow("PAYDA")
+            End If
+            If Not IsDBNull(MyRow("ODEME_ID")) Then
+                MyMevsimlik.OdemeID = MyRow("ODEME_ID")
+            End If
+            MyMevsimlikler.Add(MyMevsimlik)
+        Next
+        Return MyMevsimlikler
+    End Function
+
+    Public Function GetKisiCollection(_DataTable As DataTable) As Collection
+        Dim MyKisiler As New Collection
+        For Each MyRow As DataRow In _DataTable.Rows
+            Dim MyKisi As New Kisi
+            MyKisi.ID = Long.Parse(MyRow("ID").ToString)
+            MyKisi.Adi = MyRow("ADI").ToString
+            MyKisi.Soyadi = MyRow("SOYADI").ToString
+            If Not IsDBNull(MyRow("TC_KIMLIK_NO")) Then
+                MyKisi.TCKimlikNo = MyRow("TC_KIMLIK_NO")
+            End If
+            MyKisi.Baba = MyRow("BABA").ToString
+            MyKisi.Adres = MyRow("ADRES").ToString
+            MyKisi.Telefon = MyRow("TELEFON").ToString
+            MyKisi.Cinsiyet = MyRow("CINSIYET").ToString
+            MyKisi.Durumu = MyRow("DURUMU").ToString
+            MyKisi.DogumYeri = MyRow("DOGUM_YERI").ToString
+            If Not IsDBNull(MyRow("DOGUM_TARIHI")) Then
+                MyKisi.DogumTarihi = MyRow("DOGUM_TARIHI")
+            End If
+            'If Not IsDBNull(MyRow("TIP")) Then
+            '    MyKisi.MalikTipi = MyRow("TIP")
+            'End If
+            'If Not IsDBNull(MyRow("MURIS")) Then
+            '    MyKisi.Muris = MyRow("MURIS")
+            'End If
+            MyKisiler.Add(MyKisi)
+        Next
+        Return MyKisiler
+    End Function
+
+    Public Function GetParsellerCollectionV5(_DataTable As DataTable) As Collection
+        Dim MyParseller As New Collection
+        Dim MyMalikler As New Collection
+        Dim MyParsel As New Parsel
+        Dim MyMalik As New Kisi
+        Dim LastAda As String = "-1"
+        Dim LastParsel As String = "-1"
+        For Each MyRow As DataRow In _DataTable.Rows
+            If (LastAda = MyRow("ADA").ToString And LastParsel = MyRow("PARSEL").ToString) Then
+                If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
+                    If MyRow("PARSEL_MALIK_TIPI") = 1 Then
+                        MyMalik = New Kisi(MyRow("MALIK").ToString)
+                        'MyMalik.MalikTipi = 1
+                    Else
+                        MyMalik = New Kisi(MyRow("MALIK").ToString, String.Empty)
+                        'MyMalik.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
+                    End If
+                Else
+                    MyMalik = New Kisi(MyRow("MALIK").ToString, String.Empty)
+                End If
+                MyMalik.Baba = MyRow("BABA").ToString
+                If Not IsDBNull(MyRow("HISSE")) Then
+                    If MyRow("HISSE").ToString().Contains("TAM") Then
+                        MyMalik.HissePay = 1
+                        MyMalik.HissePayda = 1
+                    ElseIf MyRow("HISSE").ToString().Contains("VRS") Then
+                        MyMalik.HissePay = 0
+                        MyMalik.HissePayda = 1
+                    Else
+                        If MyRow("HISSE").ToString().Contains("/") Then
+                            Dim RSFRSplit As String() = MyRow("HISSE").ToString().Trim.Split("/")
+                            MyMalik.HissePay = Val(RSFRSplit(0))
+                            MyMalik.HissePayda = Val(RSFRSplit(1))
+                        Else
+                            MyMalik.HissePay = 0
+                            MyMalik.HissePayda = 1
+                        End If
+                    End If
+                Else
+                    MyMalik.HissePay = 0
+                    MyMalik.HissePayda = 1
+                End If
+                If Not IsDBNull(MyRow("TAPUTARIH")) Then
+                    MyMalik.TapuTarihi = MyRow("TAPUTARIH")
+                End If
+                MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString
+
+                Dim MyMalikKod As New KisiKod
+                If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
+                    MyMalikKod.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
+                End If
+                If Not IsDBNull(MyRow("DAVETIYE_TEBLIG_DURUMU")) Then
+                    MyMalikKod.DavetiyeTebligDurumu = MyRow("DAVETIYE_TEBLIG_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("DAVETIYE_ALINMA_DURUMU")) Then
+                    MyMalikKod.DavetiyeAlinmaDurumu = MyRow("DAVETIYE_ALINMA_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("GORUSME_DURUMU")) Then
+                    MyMalikKod.GorusmeDurumu = MyRow("GORUSME_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("GORUSME_NO")) Then
+                    MyMalikKod.GorusmeNo = MyRow("GORUSME_NO")
+                End If
+                If Not IsDBNull(MyRow("GORUSME_TARIHI")) Then
+                    MyMalikKod.GorusmeTarihi = MyRow("GORUSME_TARIHI")
+                End If
+                If Not IsDBNull(MyRow("ANLASMA_DURUMU")) Then
+                    MyMalikKod.AnlasmaDurumu = MyRow("ANLASMA_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("ANLASMA_TARIHI")) Then
+                    MyMalikKod.AnlasmaTarihi = MyRow("ANLASMA_TARIHI")
+                End If
+                If Not IsDBNull(MyRow("ANLASMA_DUSUNCELER")) Then
+                    MyMalikKod.AnlasmaDusunceler = MyRow("ANLASMA_DUSUNCELER")
+                End If
+                If Not IsDBNull(MyRow("TESCIL_DURUMU")) Then
+                    MyMalikKod.TescilDurumu = MyRow("TESCIL_DURUMU")
+                End If
+                MyMalik.Kod = MyMalikKod
+
+                MyMalikler.Add(MyMalik)
+                MyMalik = New Kisi
+            Else
+                If MyMalikler.Count > 0 Then
+                    MyParsel.Malikler = MyMalikler
+                    MyParseller.Add(MyParsel)
+                    MyMalikler = New Collection
+                    MyMalik = New Kisi
+                    MyParsel = New Parsel
+                End If
+                If Not IsDBNull(MyRow("PROJE_ID")) Then
+                    If IsNumeric(MyRow("PROJE_ID")) Then
+                        MyParsel.ProjeID = MyRow("PROJE_ID")
+                    Else
+                        MyParsel.ProjeID = 1 'vt5 de proje id alfasayısal olursa treeview sorun çıkıyor.
+                    End If
+                Else
+                    MyParsel.ProjeID = 1
+                End If
+                MyParsel.Il = MyRow("IL").ToString
+                MyParsel.Ilce = MyRow("ILCE").ToString
+                MyParsel.Koy = MyRow("KOY").ToString
+                MyParsel.Mahalle = MyRow("MAHALLE").ToString
+                MyParsel.AdaNo = MyRow("ADA").ToString
+                MyParsel.ParselNo = MyRow("PARSEL").ToString
+                MyParsel.PaftaNo = MyRow("PAFTA").ToString
+                MyParsel.Cinsi = MyRow("CINSI").ToString
+                MyParsel.Mevki = MyRow("MEVKI").ToString
+                MyParsel.Cilt = MyRow("CILT").ToString
+                MyParsel.Sayfa = MyRow("SAYFA").ToString
+                If Not IsDBNull(MyRow("TAPU_ALANI")) Then
+                    MyParsel.TapuAlani = MyRow("TAPU_ALANI")
+                End If
+                If Not IsDBNull(MyRow("DAIMI_IRTIFAK_ALAN")) Then
+                    MyParsel.DaimiIrtifakAlan = MyRow("DAIMI_IRTIFAK_ALAN")
+                End If
+                If Not IsDBNull(MyRow("GECICI_IRTIFAK_ALAN")) Then
+                    MyParsel.GeciciIrtifakAlan = MyRow("GECICI_IRTIFAK_ALAN")
+                End If
+                If Not IsDBNull(MyRow("MULKIYET_ALAN")) Then
+                    MyParsel.MulkiyetAlan = MyRow("MULKIYET_ALAN")
+                End If
+                If Not IsDBNull(MyRow("DAIMI_IRTIFAK_BEDEL")) Then
+                    MyParsel.DaimiIrtifakBedel = MyRow("DAIMI_IRTIFAK_BEDEL")
+                End If
+                If Not IsDBNull(MyRow("GECICI_IRTIFAK_BEDEL")) Then
+                    MyParsel.GeciciIrtifakBedel = MyRow("GECICI_IRTIFAK_BEDEL")
+                End If
+                If Not IsDBNull(MyRow("MULKIYET_BEDEL")) Then
+                    MyParsel.MulkiyetBedel = MyRow("MULKIYET_BEDEL")
+                End If
+
+                Dim MyParselKod As New ParselKod
+                If Not IsDBNull(MyRow("KADASTRAL_DURUM")) Then
+                    MyParselKod.KadastralDurum = MyRow("KADASTRAL_DURUM")
+                End If
+                If Not IsDBNull(MyRow("ISTIMLAK_TURU")) Then
+                    MyParselKod.IstimlakTuru = MyRow("ISTIMLAK_TURU")
+                End If
+                If Not IsDBNull(MyRow("ISTIMLAK_SERHI")) Then
+                    MyParselKod.IstimlakSerhi = MyRow("ISTIMLAK_SERHI")
+                End If
+                If Not IsDBNull(MyRow("DAVA_DOSYASI_DURUMU")) Then
+                    MyParselKod.DavaDurumu10 = MyRow("DAVA_DOSYASI_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("DAVA_DOSYASI_DURUMU_27")) Then
+                    MyParselKod.DavaDurumu27 = MyRow("DAVA_DOSYASI_DURUMU_27")
+                End If
+                If Not IsDBNull(MyRow("ISTIMLAK_DISI_DURUMU")) Then
+                    MyParselKod.IstimlakDisi = MyRow("ISTIMLAK_DISI_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("DEVIR_DURUMU")) Then
+                    MyParselKod.DevirDurumu = MyRow("DEVIR_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("PARSEL_ALINMA_DURUMU")) Then
+                    MyParselKod.EdinimDurumu = MyRow("PARSEL_ALINMA_DURUMU")
+                End If
+                MyParsel.Kod = MyParselKod
+
+                LastAda = MyParsel.AdaNo
+                LastParsel = MyParsel.ParselNo
+                If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
+                    If MyRow("PARSEL_MALIK_TIPI") = 1 Then
+                        MyMalik = New Kisi(MyRow("MALIK").ToString)
+                        'MyMalik.MalikTipi = 1
+                    Else
+                        MyMalik = New Kisi(MyRow("MALIK").ToString, String.Empty)
+                        'MyMalik.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
+                    End If
+                Else
+                    MyMalik = New Kisi(MyRow("MALIK").ToString, String.Empty)
+                End If
+                MyMalik.Baba = MyRow("BABA").ToString
+                If Not IsDBNull(MyRow("HISSE")) Then
+                    If MyRow("HISSE").ToString().Contains("TAM") Then
+                        MyMalik.HissePay = 1
+                        MyMalik.HissePayda = 1
+                    ElseIf MyRow("HISSE").ToString().Contains("VRS") Then
+                        MyMalik.HissePay = 0
+                        MyMalik.HissePayda = 1
+                    Else
+                        If MyRow("HISSE").ToString().Contains("/") Then
+                            Dim RSFRSplit As String() = MyRow("HISSE").ToString().Trim.Split("/")
+                            MyMalik.HissePay = Val(RSFRSplit(0))
+                            MyMalik.HissePayda = Val(RSFRSplit(1))
+                        Else
+                            MyMalik.HissePay = 0
+                            MyMalik.HissePayda = 1
+                        End If
+                    End If
+                Else
+                    MyMalik.HissePay = 0
+                    MyMalik.HissePayda = 1
+                End If
+                If Not IsDBNull(MyRow("TAPUTARIH")) Then
+                    MyMalik.TapuTarihi = MyRow("TAPUTARIH")
+                End If
+                MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString
+
+                Dim MyMalikKod As New KisiKod
+                If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
+                    MyMalikKod.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
+                End If
+                If Not IsDBNull(MyRow("DAVETIYE_TEBLIG_DURUMU")) Then
+                    MyMalikKod.DavetiyeTebligDurumu = MyRow("DAVETIYE_TEBLIG_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("DAVETIYE_ALINMA_DURUMU")) Then
+                    MyMalikKod.DavetiyeAlinmaDurumu = MyRow("DAVETIYE_ALINMA_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("GORUSME_DURUMU")) Then
+                    MyMalikKod.GorusmeDurumu = MyRow("GORUSME_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("GORUSME_NO")) Then
+                    MyMalikKod.GorusmeNo = MyRow("GORUSME_NO")
+                End If
+                If Not IsDBNull(MyRow("GORUSME_TARIHI")) Then
+                    MyMalikKod.GorusmeTarihi = MyRow("GORUSME_TARIHI")
+                End If
+                If Not IsDBNull(MyRow("ANLASMA_DURUMU")) Then
+                    MyMalikKod.AnlasmaDurumu = MyRow("ANLASMA_DURUMU")
+                End If
+                If Not IsDBNull(MyRow("ANLASMA_TARIHI")) Then
+                    MyMalikKod.AnlasmaTarihi = MyRow("ANLASMA_TARIHI")
+                End If
+                If Not IsDBNull(MyRow("ANLASMA_DUSUNCELER")) Then
+                    MyMalikKod.AnlasmaDusunceler = MyRow("ANLASMA_DUSUNCELER")
+                End If
+                If Not IsDBNull(MyRow("TESCIL_DURUMU")) Then
+                    MyMalikKod.TescilDurumu = MyRow("TESCIL_DURUMU")
+                End If
+                MyMalik.Kod = MyMalikKod
+
+                MyMalikler.Add(MyMalik)
+                MyMalik = New Kisi
+            End If
+        Next
+        MyParsel.Malikler = MyMalikler
+        MyParseller.Add(MyParsel)
+        Return MyParseller
+    End Function
+
+    Public Function GetMustemilatCollectionV5(_DataTable As DataTable) As Collection
+        Dim MyMustemilatlar As New Collection
+        Dim MyMalik As New Kisi
+        For Each MyRow As DataRow In _DataTable.Rows
+            Dim MyParsel As New Parsel
+            MyParsel.Il = MyRow("IL").ToString
+            MyParsel.Ilce = MyRow("ILCE").ToString
+            MyParsel.Koy = MyRow("KOY").ToString
+            MyParsel.Mahalle = MyRow("MAHALLE").ToString
+            MyParsel.AdaNo = MyRow("ADA").ToString
+            MyParsel.ParselNo = MyRow("PARSEL").ToString
+
+            Dim MyKisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
+
+            Dim MyMustemilat As New Mustemilat
+            MyMustemilat.ParselID = GetParselID(MyParsel)
+            MyMustemilat.SahipID = GetKisiID(MyKisi)
+            'Kisi ID için parsel bilgiside dikkate alınmalıdır. bu haliyle yanlış maliklere id bağlanacaktır.
+            MyKisi = Nothing
+            MyParsel = Nothing
+
+            If Not IsDBNull(MyRow("BIRIM")) Then
+                MyMustemilat.Adet = MyRow("BIRIM").ToString
+            End If
+            MyMustemilat.Tanim = MyRow("TANIM").ToString
+            If Not IsDBNull(MyRow("FIYAT")) Then
+                MyMustemilat.Fiyat = MyRow("FIYAT").ToString
+            End If
+            Select Case MyRow("K_M").ToString
+                Case "K"
+                    MyMustemilat.Malik = False
+                Case Else
+                    MyMustemilat.Malik = True
+            End Select
+            MyMustemilat.Pay = 1
+            MyMustemilat.Payda = 1
+            MyMustemilat.OdemeID = 0
+
+            MyMustemilatlar.Add(MyMustemilat)
+        Next
+
+        Return MyMustemilatlar
+    End Function
+
+    Public Function GetMevsimlikCollectionV5(_DataTable As DataTable) As Collection
+        Dim MyMevsimlikler As New Collection
+        Dim MyMalik As New Kisi
+        Dim LastAda As Long = -1
+        Dim LastParsel As Long = -1
+        For Each MyRow As DataRow In _DataTable.Rows
+            Dim MyParsel As New Parsel
+            MyParsel.Il = MyRow("IL").ToString
+            MyParsel.Ilce = MyRow("ILCE").ToString
+            MyParsel.Koy = MyRow("KOY").ToString
+            MyParsel.Mahalle = MyRow("MAHALLE").ToString
+            MyParsel.AdaNo = MyRow("ADA").ToString
+            MyParsel.ParselNo = MyRow("PARSEL").ToString
+
+            Dim MyKisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
+
+            Dim MyMevsimlik As New Mevsimlik
+            MyMevsimlik.ParselID = GetParselID(MyParsel)
+            MyMevsimlik.SahipID = GetKisiID(MyKisi)
+            'Kisi ID için parsel bilgiside dikkate alınmalıdır. bu haliyle yanlış maliklere id bağlanacaktır.
+            MyKisi = Nothing
+            MyParsel = Nothing
+
+            If Not IsDBNull(MyRow("HASAR_ALAN")) Then
+                MyMevsimlik.Alan = MyRow("HASAR_ALAN").ToString
+            End If
+            MyMevsimlik.Tanim = MyRow("TANIM").ToString
+            If Not IsDBNull(MyRow("HASAR_BEDEL")) Then
+                MyMevsimlik.Bedel = MyRow("HASAR_BEDEL").ToString
+            End If
+            Select Case MyRow("MK").ToString
+                Case "K"
+                    MyMevsimlik.Malik = False
+                Case Else
+                    MyMevsimlik.Malik = True
+            End Select
+            If Not IsDBNull(MyRow("HISSE")) Then
+                If MyRow("HISSE").ToString().Contains("TAM") Then
+                    MyMevsimlik.Pay = 1
+                    MyMevsimlik.Payda = 1
+                ElseIf MyRow("HISSE").ToString().Contains("VRS") Then
+                    MyMevsimlik.Pay = 0
+                    MyMevsimlik.Payda = 1
+                Else
+                    If MyRow("HISSE").ToString().Contains("/") Then
+                        Dim RSFRSplit As String() = MyRow("HISSE").ToString().Trim.Split("/")
+                        MyMevsimlik.Pay = Val(RSFRSplit(0))
+                        MyMevsimlik.Payda = Val(RSFRSplit(1))
+                    Else
+                        MyMevsimlik.Pay = 0
+                        MyMevsimlik.Payda = 1
+                    End If
+                End If
+            Else
+                MyMevsimlik.Pay = 0
+                MyMevsimlik.Payda = 1
+            End If
+
+            MyMevsimlik.OdemeID = 0
+
+            MyMevsimlikler.Add(MyMevsimlik)
+        Next
+
+        Return MyMevsimlikler
+    End Function
+
+    Public Function GetTakbisParselCollection(_DataTable As DataTable) As Collection
+        Dim MyParseller As New Collection
+        Dim MyMalikler As New Collection
+        Dim MyParsel As New Parsel
+        Dim MyMalik As New Kisi
+        Dim LastAda As Long = -1
+        Dim LastParsel As Long = -1
+        For Each MyRow As DataRow In _DataTable.Rows
+            If (LastAda = MyRow("ADA").ToString And LastParsel = MyRow("PARSEL")) Then
+                MyMalik.Adi = MyRow("ADI").ToString
+                MyMalik.Soyadi = MyRow("SOYADI").ToString
+                MyMalik.Baba = MyRow("BABA").ToString
+                If Not IsDBNull(MyRow("HISSEPAY")) Then
+                    MyMalik.HissePay = MyRow("HISSEPAY").ToString
+                End If
+                If Not IsDBNull(MyRow("HISSEPAYDA")) Then
+                    MyMalik.HissePayda = MyRow("HISSEPAYDA").ToString
+                End If
+                If Not IsDBNull(MyRow("TARIH")) Then
+                    MyMalik.TapuTarihi = MyRow("TARIH")
+                End If
+                MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString
+                MyMalikler.Add(MyMalik)
+                MyMalik = New Kisi
+            Else
+                If MyMalikler.Count > 0 Then
+                    MyParsel.Malikler = MyMalikler
+                    MyParseller.Add(MyParsel)
+                    MyMalikler = New Collection
+                    MyMalik = New Kisi
+                    MyParsel = New Parsel
+                End If
+                MyParsel.Il = MyRow("IL").ToString
+                MyParsel.Ilce = MyRow("ILCE").ToString
+                MyParsel.Koy = MyRow("KOY").ToString
+                'MyParsel.Mahalle = MyRow("MAHALLE").ToString
+                MyParsel.AdaNo = MyRow("ADA").ToString
+                MyParsel.ParselNo = MyRow("PARSEL").ToString
+                MyParsel.PaftaNo = MyRow("PAFTA").ToString
+                MyParsel.Cinsi = MyRow("CINSI").ToString
+                MyParsel.Mevki = MyRow("MEVKI").ToString
+                MyParsel.Cilt = MyRow("CILT").ToString
+                MyParsel.Sayfa = MyRow("SAYFA").ToString
+                If Not IsDBNull(MyRow("TAPU_ALANI")) Then
+                    MyParsel.TapuAlani = MyRow("TAPU_ALANI")
+                End If
+                LastAda = MyParsel.AdaNo
+                LastParsel = MyParsel.ParselNo
+                MyMalik.Adi = MyRow("ADI").ToString
+                MyMalik.Soyadi = MyRow("SOYADI").ToString
+                MyMalik.Baba = MyRow("BABA").ToString
+                MyMalik.Cinsiyet = MyRow("MALIK_CINSIYET").ToString
+                If Not IsDBNull(MyRow("TC_KIMLIK_NO")) Then
+                    MyMalik.TCKimlikNo = MyRow("TC_KIMLIK_NO").ToString
+                End If
+                If Not IsDBNull(MyRow("HISSEPAY")) Then
+                    MyMalik.HissePay = MyRow("HISSEPAY").ToString
+                End If
+                If Not IsDBNull(MyRow("HISSEPAYDA")) Then
+                    MyMalik.HissePayda = MyRow("HISSEPAYDA").ToString
+                End If
+                If Not IsDBNull(MyRow("TARIH")) Then
+                    MyMalik.TapuTarihi = MyRow("TARIH")
+                End If
+                MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString
+                MyMalikler.Add(MyMalik)
+                MyMalik = New Kisi
+            End If
+        Next
+        MyParsel.Malikler = MyMalikler
+        MyParseller.Add(MyParsel)
+        Return MyParseller
+    End Function
+
+    Public Function GetProje() As Proje
+        Dim MyProje As New Proje
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM PROJE"
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyProje.ID = dataReader("ID").ToString
+                MyProje.Kod = dataReader("KOD").ToString
+                MyProje.Ad = dataReader("AD").ToString
+                MyProje.ProjeNotlari = dataReader("PROJE_NOTLARI").ToString
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            'MyProje = Nothing
+        End Try
+        Return MyProje
+    End Function
+
+    Public Function GetProje(ProjeID As Long) As Proje
+        Dim MyProje As New Proje
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM PROJE WHERE ID=" & ProjeID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyProje.ID = ProjeID
+                MyProje.Kod = dataReader("KOD").ToString
+                MyProje.Ad = dataReader("AD").ToString
+                MyProje.ProjeNotlari = dataReader("PROJE_NOTLARI").ToString
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            'MyProje = Nothing
+        End Try
+        Return MyProje
+    End Function
+
+    Public Function GetParsel(ParselID As Long) As Parsel
+        Dim MyParsel As New Parsel
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM PARSEL WHERE ID=" & ParselID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyParsel.ID = ParselID
+                MyParsel.ProjeID = dataReader("PROJE_ID")
+                MyParsel.Il = dataReader("IL").ToString
+                MyParsel.Ilce = dataReader("ILCE").ToString
+                MyParsel.Koy = dataReader("KOY").ToString
+                MyParsel.Mahalle = dataReader("MAHALLE").ToString
+                MyParsel.AdaNo = dataReader("ADA").ToString
+                MyParsel.ParselNo = dataReader("PARSEL").ToString
+                MyParsel.PaftaNo = dataReader("PAFTA").ToString
+                MyParsel.Cilt = dataReader("CILT").ToString
+                MyParsel.Sayfa = dataReader("SAYFA").ToString
+                MyParsel.Cinsi = dataReader("CINSI").ToString
+                MyParsel.Mevki = dataReader("MEVKI").ToString
+                If Not IsDBNull(dataReader("TAPU_ALANI")) Then
+                    MyParsel.TapuAlani = dataReader("TAPU_ALANI")
+                End If
+                MyParsel.Sayfa = dataReader("SAYFA").ToString
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            'MyParsel = Nothing
+        End Try
+        Return MyParsel
+    End Function
+
+    Public Function GetParselKod(ParselID As Long) As ParselKod
+        Dim MyParselKod As New ParselKod
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM PARSEL_KOD WHERE PARSEL_ID=" & ParselID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                If Not IsDBNull(dataReader("KADASTRAL_DURUM")) Then
+                    MyParselKod.KadastralDurum = dataReader("KADASTRAL_DURUM")
+                End If
+                If Not IsDBNull(dataReader("ISTIMLAK_TURU")) Then
+                    MyParselKod.IstimlakTuru = dataReader("ISTIMLAK_TURU")
+                End If
+                If Not IsDBNull(dataReader("ISTIMLAK_SERHI")) Then
+                    MyParselKod.IstimlakSerhi = dataReader("ISTIMLAK_SERHI")
+                End If
+                If Not IsDBNull(dataReader("DAVA10_DURUMU")) Then
+                    MyParselKod.DavaDurumu10 = dataReader("DAVA10_DURUMU")
+                End If
+                If Not IsDBNull(dataReader("DAVA27_DURUMU")) Then
+                    MyParselKod.DavaDurumu27 = dataReader("DAVA27_DURUMU")
+                End If
+                If Not IsDBNull(dataReader("EDINIM_DURUMU")) Then
+                    MyParselKod.EdinimDurumu = dataReader("EDINIM_DURUMU")
+                End If
+                MyParselKod.IstimlakDisi = dataReader("ISTIMLAK_DISI")
+                MyParselKod.DevirDurumu = dataReader("DEVIR_DURUMU")
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            'MyParsel = Nothing
+        End Try
+        Return MyParselKod
+    End Function
+
+    Public Function GetKisi(KisiID As Long) As Kisi
+        Dim MyKisi As New Kisi
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM KISI WHERE ID=" & KisiID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyKisi.ID = KisiID
+                MyKisi.TCKimlikNo = dataReader("TC_KIMLIK_NO")
+                MyKisi.Adi = dataReader("ADI").ToString
+                MyKisi.Soyadi = dataReader("SOYADI").ToString
+                MyKisi.Cinsiyet = dataReader("CINSIYET").ToString
+                MyKisi.DogumYeri = dataReader("DOGUM_YERI").ToString
+                MyKisi.Baba = dataReader("BABA").ToString
+                MyKisi.Durumu = dataReader("DURUMU").ToString
+                MyKisi.Adres = dataReader("ADRES").ToString
+                MyKisi.Telefon = dataReader("TELEFON").ToString
+                If Not IsDBNull(dataReader("DOGUM_TARIHI")) Then
+                    MyKisi.DogumTarihi = dataReader("DOGUM_TARIHI")
+                End If
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+        End Try
+        Return MyKisi
+    End Function
+
+    Public Function GetKisiKod(KisiID As Long) As KisiKod
+        Dim MyKisiKod As New KisiKod
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM KISI_KOD WHERE KISI_ID=" & KisiID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                If Not IsDBNull(dataReader("MALIK_TIPI")) Then
+                    MyKisiKod.MalikTipi = dataReader("MALIK_TIPI")
+                End If
+                If Not IsDBNull(dataReader("DAVETIYE_TEBLIG_DURUMU")) Then
+                    MyKisiKod.DavetiyeTebligDurumu = dataReader("DAVETIYE_TEBLIG_DURUMU")
+                End If
+                If Not IsDBNull(dataReader("DAVETIYE_ALINMA_DURUMU")) Then
+                    MyKisiKod.DavetiyeAlinmaDurumu = dataReader("DAVETIYE_ALINMA_DURUMU")
+                End If
+                If Not IsDBNull(dataReader("GORUSME_DURUMU")) Then
+                    MyKisiKod.GorusmeDurumu = dataReader("GORUSME_DURUMU")
+                End If
+                If Not IsDBNull(dataReader("GORUSME_NO")) Then
+                    MyKisiKod.GorusmeNo = dataReader("GORUSME_NO")
+                End If
+                If Not IsDBNull(dataReader("GORUSME_TARIHI")) Then
+                    MyKisiKod.GorusmeTarihi = dataReader("GORUSME_TARIHI")
+                End If
+                If Not IsDBNull(dataReader("ANLASMA_DURUMU")) Then
+                    MyKisiKod.AnlasmaDurumu = dataReader("ANLASMA_DURUMU")
+                End If
+                If Not IsDBNull(dataReader("ANLASMA_TARIHI")) Then
+                    MyKisiKod.AnlasmaTarihi = dataReader("ANLASMA_TARIHI")
+                End If
+                MyKisiKod.AnlasmaDusunceler = dataReader("ANLASMA_DUSUNCELER")
+                If Not IsDBNull(dataReader("TESCIL_DURUMU")) Then
+                    MyKisiKod.TescilDurumu = dataReader("TESCIL_DURUMU")
+                End If
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            'MyParsel = Nothing
+        End Try
+        Return MyKisiKod
+    End Function
+
+    Public Function GetMustemilat(MustemilatID As Long) As Mustemilat
+        Dim MyMustemilat As New Mustemilat
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM MUSTEMILAT WHERE ID=" & MustemilatID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyMustemilat.ID = MustemilatID
+                MyMustemilat.ParselID = dataReader("PARSEL_ID")
+                MyMustemilat.SahipID = dataReader("SAHIP_ID")
+                MyMustemilat.Tanim = dataReader("TANIM")
+                MyMustemilat.Adet = dataReader("ADET")
+                MyMustemilat.Fiyat = dataReader("FIYAT")
+                MyMustemilat.Malik = dataReader("MALIK")
+                MyMustemilat.Pay = dataReader("PAY")
+                MyMustemilat.Payda = dataReader("PAYDA")
+                MyMustemilat.OdemeID = dataReader("ODEME_ID")
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            'MyMustemilat = Nothing
+        End Try
+        Return MyMustemilat
+    End Function
+
+    Public Function GetMevsimlik(MevsimlikID As Long) As Mevsimlik
+        Dim MyMevsimlik As New Mevsimlik
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT * FROM MEVSIMLIK WHERE ID=" & MevsimlikID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyMevsimlik.ID = MevsimlikID
+                MyMevsimlik.ParselID = dataReader("PARSEL_ID")
+                MyMevsimlik.SahipID = dataReader("SAHIP_ID")
+                MyMevsimlik.Tanim = dataReader("TANIM")
+                MyMevsimlik.Alan = dataReader("ALAN")
+                MyMevsimlik.Bedel = dataReader("BEDEL")
+                MyMevsimlik.Malik = dataReader("MALIK")
+                MyMevsimlik.Pay = dataReader("PAY")
+                MyMevsimlik.Payda = dataReader("PAYDA")
+                MyMevsimlik.OdemeID = dataReader("ODEME_ID")
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            'MyMevsimlik = Nothing
+        End Try
+        Return MyMevsimlik
+    End Function
+
+    Public Function GetParselID(_Parsel As Parsel) As Long
+        Dim MyID As Long = -1
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT ID FROM PARSEL WHERE IL='" + _Parsel.Il.ToString + "' AND ILCE='" + _Parsel.Ilce.ToString + "' AND KOY='" + _Parsel.Koy.ToString + "' AND MAHALLE='" + _Parsel.Mahalle.ToString + "' AND ADA='" + _Parsel.AdaNo.ToString + "' AND PARSEL='" + _Parsel.ParselNo.ToString + "'"
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyID = dataReader("ID")
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            MyID = -1
+        End Try
+        Return MyID
+    End Function
+
+    Public Function GetKisiID(_Kisi As Kisi) As Long
+        Dim MyID As Long = -1
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT ID FROM KISI WHERE ADI='" & _Kisi.Adi.ToString & "' AND SOYADI='" & _Kisi.Soyadi.ToString & "' AND BABA='" & _Kisi.Baba.ToString & "'"
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyID = dataReader("ID")
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            MyID = -1
+        End Try
+        Return MyID
+    End Function
+
+    Public Function GetProjeID(_Proje As Proje) As Long
+        Dim MyID As Long = -1
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT ID FROM PROJE WHERE AD='" & _Proje.Ad.ToString & "'"
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyID = dataReader("ID")
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            MyID = -1
+        End Try
+        Return MyID
+    End Function
+
+    Public Function GetKamuID(_Parsel As Parsel) As Long
+        Dim MyID As Long = -1
+        Dim connection As New OleDbConnection(ConnectionString)
+        Dim command As OleDbCommand = connection.CreateCommand()
+        command.CommandText = "SELECT ID FROM KAMULASTIRMA WHERE PARSEL_ID=" & _Parsel.ID.ToString
+        Try
+            connection.Open()
+            Dim dataReader As OleDbDataReader = command.ExecuteReader()
+            Do While dataReader.Read()
+                MyID = dataReader("ID")
+            Loop
+            dataReader.Close()
+            dataReader = Nothing
+            command = Nothing
+            connection.Close()
+            connection = Nothing
+        Catch ex As Exception
+            MyID = -1
+        End Try
+        Return MyID
+    End Function
+
+    Public Function AddParsel(_Parsel As Parsel) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM PARSEL"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow
+
+            MyRow = MyTable.NewRow()
+
+            MyRow("PROJE_ID") = _Parsel.ProjeID
+            MyRow("IL") = _Parsel.Il
+            MyRow("ILCE") = _Parsel.Ilce
+            MyRow("KOY") = _Parsel.Koy
+            MyRow("MAHALLE") = _Parsel.Mahalle
+            MyRow("ADA") = _Parsel.AdaNo
+            MyRow("PARSEL") = _Parsel.ParselNo
+            MyRow("PAFTA") = _Parsel.PaftaNo
+            MyRow("MEVKI") = _Parsel.Mevki
+            MyRow("CILT") = _Parsel.Cilt
+            MyRow("SAYFA") = _Parsel.Sayfa
+            MyRow("CINSI") = _Parsel.Cinsi
+            MyRow("TAPU_ALANI") = _Parsel.TapuAlani
+
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+            MyRow = Nothing
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function AddParselKod(_Parsel As Parsel) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM PARSEL_KOD"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow
+
+            MyRow = MyTable.NewRow()
+
+            MyRow("PARSEL_ID") = _Parsel.ID
+            MyRow("KADASTRAL_DURUM") = _Parsel.Kod.KadastralDurum
+            MyRow("ISTIMLAK_TURU") = _Parsel.Kod.IstimlakTuru
+            MyRow("ISTIMLAK_SERHI") = _Parsel.Kod.IstimlakSerhi
+            MyRow("DAVA10_DURUMU") = _Parsel.Kod.DavaDurumu10
+            MyRow("DAVA27_DURUMU") = _Parsel.Kod.DavaDurumu27
+            MyRow("EDINIM_DURUMU") = _Parsel.Kod.EdinimDurumu
+            MyRow("ISTIMLAK_DISI") = _Parsel.Kod.IstimlakDisi
+            MyRow("DEVIR_DURUMU") = _Parsel.Kod.DevirDurumu
+
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyRow = Nothing
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function AddKisi(_Kisi As Kisi) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim queryString As String = "SELECT * FROM KISI"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(queryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow
+
+            MyRow = MyTable.NewRow()
+
+            MyRow("TC_KIMLIK_NO") = _Kisi.TCKimlikNo
+            MyRow("ADI") = _Kisi.Adi
+            MyRow("SOYADI") = _Kisi.Soyadi
+            MyRow("CINSIYET") = _Kisi.Cinsiyet
+            MyRow("DOGUM_TARIHI") = _Kisi.DogumTarihi
+            MyRow("DOGUM_YERI") = _Kisi.DogumYeri
+            MyRow("BABA") = _Kisi.Baba
+            MyRow("DURUMU") = _Kisi.Durumu
+            MyRow("ADRES") = _Kisi.Adres
+            MyRow("TELEFON") = _Kisi.Telefon
+
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+
+            MyRow = Nothing
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function AddKisiKod(_Kisi As Kisi) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim queryString As String = "SELECT * FROM KISI_KOD"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(queryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow
+
+            MyRow = MyTable.NewRow()
+
+            MyRow("KISI_ID") = _Kisi.ID
+            MyRow("MALIK_TIPI") = _Kisi.Kod.MalikTipi
+            MyRow("DAVETIYE_TEBLIG_DURUMU") = _Kisi.Kod.DavetiyeTebligDurumu
+            MyRow("DAVETIYE_ALINMA_DURUMU") = _Kisi.Kod.DavetiyeAlinmaDurumu
+            MyRow("GORUSME_DURUMU") = _Kisi.Kod.GorusmeDurumu
+            MyRow("GORUSME_NO") = _Kisi.Kod.GorusmeNo
+            MyRow("GORUSME_TARIHI") = _Kisi.Kod.GorusmeTarihi
+            MyRow("ANLASMA_DURUMU") = _Kisi.Kod.AnlasmaDurumu
+            MyRow("ANLASMA_TARIHI") = _Kisi.Kod.AnlasmaTarihi
+            MyRow("ANLASMA_DUSUNCELER") = _Kisi.Kod.AnlasmaDusunceler
+            MyRow("TESCIL_DURUMU") = _Kisi.Kod.TescilDurumu
+
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+            MyRow = Nothing
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function AddKamu(_Parsel As Parsel) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM KAMULASTIRMA"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow
+
+            MyRow = MyTable.NewRow()
+
+            MyRow("PARSEL_ID") = _Parsel.ID
+            MyRow("MULKIYET_ALAN") = _Parsel.MulkiyetAlan
+            MyRow("DAIMI_IRTIFAK_ALAN") = _Parsel.DaimiIrtifakAlan
+            MyRow("GECICI_IRTIFAK_ALAN") = _Parsel.GeciciIrtifakAlan
+
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyRow = Nothing
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function AddMulkiyet(_Parsel As Parsel) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM MULKIYET"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            For Each MyMalik As Kisi In _Parsel.Malikler
+                Dim MyRow As DataRow
+
+                MyRow = MyTable.NewRow()
+                MyRow("PARSEL_ID") = _Parsel.ID
+                MyRow("KISI_ID") = MyMalik.ID
+                MyRow("PAY") = MyMalik.HissePay
+                MyRow("PAYDA") = MyMalik.HissePayda
+                MyRow("TAPU_TARIHI") = MyMalik.TapuTarihi
+                MyRow("DUSUNCELER") = MyMalik.Dusunceler
+
+                MyTable.Rows.Add(MyRow)
+
+                'Kayıt anında ID alma
+                Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+
+                MyRow = Nothing
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function AddMustemilat(_Mustemilat As Mustemilat) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM MUSTEMILAT"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow
+
+            MyRow = MyTable.NewRow()
+
+            MyRow("PARSEL_ID") = _Mustemilat.ParselID
+            MyRow("SAHIP_ID") = _Mustemilat.SahipID
+            MyRow("TANIM") = _Mustemilat.Tanim
+            MyRow("ADET") = _Mustemilat.Adet
+            MyRow("FIYAT") = _Mustemilat.Fiyat
+            MyRow("MALIK") = _Mustemilat.Malik
+            MyRow("PAY") = _Mustemilat.Pay
+            MyRow("PAYDA") = _Mustemilat.Payda
+            MyRow("ODEME_ID") = _Mustemilat.OdemeID
+
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+            MyRow = Nothing
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function AddMevsimlik(_Mevsimlik As Mevsimlik) As Long
+        Dim MyRowID As Long = -1
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM MEVSIMLIK"
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRow As DataRow
+
+            MyRow = MyTable.NewRow()
+
+            MyRow("PARSEL_ID") = _Mevsimlik.ParselID
+            MyRow("SAHIP_ID") = _Mevsimlik.SahipID
+            MyRow("TANIM") = _Mevsimlik.Tanim
+            MyRow("ALAN") = _Mevsimlik.Alan
+            MyRow("BEDEL") = _Mevsimlik.Bedel
+            MyRow("MALIK") = _Mevsimlik.Malik
+            MyRow("PAY") = _Mevsimlik.Pay
+            MyRow("PAYDA") = _Mevsimlik.Payda
+            MyRow("ODEME_ID") = _Mevsimlik.OdemeID
+
+            MyTable.Rows.Add(MyRow)
+
+            'Kayıt anında ID alma
+            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+            MyRow = Nothing
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+        Catch ex As Exception
+            MyRowID = -1
+        End Try
+        Return MyRowID
+    End Function
+
+    Public Function UpdateKamu(_Parsel As Parsel, _KamuID As Long) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM KAMULASTIRMA WHERE PARSEL_ID=" & _KamuID.ToString
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRows() As DataRow = MyTable.Select()
+
+            For Each MyRow As DataRow In MyTable.Select
+                MyRow("PARSEL_ID") = _Parsel.ID
+                MyRow("MULKIYET_ALAN") = _Parsel.MulkiyetAlan
+                MyRow("DAIMI_IRTIFAK_ALAN") = _Parsel.DaimiIrtifakAlan
+                MyRow("GECICI_IRTIFAK_ALAN") = _Parsel.GeciciIrtifakAlan
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function UpdateProject(_Proje As Proje) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM PROJE WHERE ID=" & _Proje.ID.ToString
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRows() As DataRow = MyTable.Select()
+
+            For Each MyRow As DataRow In MyTable.Select
+                MyRow("KOD") = _Proje.Kod
+                MyRow("AD") = _Proje.Ad
+                MyRow("PROJE_NOTLARI") = _Proje.ProjeNotlari
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function UpdateKisi(_Kisi As Kisi) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM KISI WHERE ID=" & _Kisi.ID.ToString
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRows() As DataRow = MyTable.Select()
+
+            For Each MyRow As DataRow In MyTable.Select
+                MyRow("TC_KIMLIK_NO") = _Kisi.TCKimlikNo
+                MyRow("ADI") = _Kisi.Adi
+                MyRow("SOYADI") = _Kisi.Soyadi
+                MyRow("CINSIYET") = _Kisi.Cinsiyet
+                MyRow("DOGUM_TARIHI") = _Kisi.DogumTarihi
+                MyRow("DOGUM_YERI") = _Kisi.DogumYeri
+                MyRow("BABA") = _Kisi.Baba
+                MyRow("DURUMU") = _Kisi.Durumu
+                MyRow("ADRES") = _Kisi.Adres
+                MyRow("TELEFON") = _Kisi.Telefon
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function UpdateParsel(_Parsel As Parsel) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM PARSEL WHERE ID=" & _Parsel.ID.ToString
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRows() As DataRow = MyTable.Select()
+
+            For Each MyRow As DataRow In MyTable.Select
+                MyRow("PROJE_ID") = _Parsel.ProjeID
+                MyRow("IL") = _Parsel.Il
+                MyRow("ILCE") = _Parsel.Ilce
+                MyRow("KOY") = _Parsel.Koy
+                MyRow("MAHALLE") = _Parsel.Mahalle
+                MyRow("ADA") = _Parsel.AdaNo
+                MyRow("PARSEL") = _Parsel.ParselNo
+                MyRow("PAFTA") = _Parsel.PaftaNo
+                MyRow("MEVKI") = _Parsel.Mevki
+                MyRow("CILT") = _Parsel.Cilt
+                MyRow("SAYFA") = _Parsel.Sayfa
+                MyRow("CINSI") = _Parsel.Cinsi
+                MyRow("TAPU_ALANI") = _Parsel.TapuAlani
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function UpdateParselKod(_Parsel As Parsel) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM PARSEL_KOD WHERE PARSEL_ID=" & _Parsel.ID.ToString
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRows() As DataRow = MyTable.Select()
+
+            For Each MyRow As DataRow In MyTable.Select
+                MyRow("KADASTRAL_DURUM") = _Parsel.Kod.KadastralDurum
+                MyRow("ISTIMLAK_TURU") = _Parsel.Kod.IstimlakTuru
+                MyRow("ISTIMLAK_SERHI") = _Parsel.Kod.IstimlakSerhi
+                MyRow("DAVA10_DURUMU") = _Parsel.Kod.DavaDurumu10
+                MyRow("DAVA27_DURUMU") = _Parsel.Kod.DavaDurumu27
+                MyRow("EDINIM_DURUMU") = _Parsel.Kod.EdinimDurumu
+                MyRow("ISTIMLAK_DISI") = _Parsel.Kod.IstimlakDisi
+                MyRow("DEVIR_DURUMU") = _Parsel.Kod.DevirDurumu
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function UpdateMustemilat(_Mustemilat As Mustemilat) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM MUSTEMILAT WHERE ID=" & _Mustemilat.ID.ToString
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRows() As DataRow = MyTable.Select()
+
+            For Each MyRow As DataRow In MyTable.Select
+                MyRow("PARSEL_ID") = _Mustemilat.ParselID
+                MyRow("SAHIP_ID") = _Mustemilat.SahipID
+                MyRow("TANIM") = _Mustemilat.Tanim
+                MyRow("ADET") = _Mustemilat.Adet
+                MyRow("FIYAT") = _Mustemilat.Fiyat
+                MyRow("MALIK") = _Mustemilat.Malik
+                MyRow("PAY") = _Mustemilat.Pay
+                MyRow("PAYDA") = _Mustemilat.Payda
+                MyRow("ODEME_ID") = _Mustemilat.OdemeID
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function UpdateMevsimlik(_Mevsimlik As Mevsimlik) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryString As String = "SELECT * FROM MEVSIMLIK WHERE ID=" & _Mevsimlik.ID.ToString
+            Dim MyDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryString, MyKamuConnection))
+
+            Dim MyTable As New DataTable
+            MyDataAdapter.Fill(MyTable)
+
+            Dim MyRows() As DataRow = MyTable.Select()
+
+            For Each MyRow As DataRow In MyTable.Select
+                MyRow("PARSEL_ID") = _Mevsimlik.ParselID
+                MyRow("SAHIP_ID") = _Mevsimlik.SahipID
+                MyRow("TANIM") = _Mevsimlik.Tanim
+                MyRow("ALAN") = _Mevsimlik.Alan
+                MyRow("BEDEL") = _Mevsimlik.Bedel
+                MyRow("MALIK") = _Mevsimlik.Malik
+                MyRow("PAY") = _Mevsimlik.Pay
+                MyRow("PAYDA") = _Mevsimlik.Payda
+                MyRow("ODEME_ID") = _Mevsimlik.OdemeID
+            Next
+
+            Dim MyCommandBuilder As New OleDb.OleDbCommandBuilder
+            MyCommandBuilder.DataAdapter = MyDataAdapter
+            MyDataAdapter.Update(MyTable)
+
+            MyTable = Nothing
+            MyCommandBuilder = Nothing
+            MyDataAdapter = Nothing
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function DeleteParsel(_ID As Long) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim connection As New OleDb.OleDbConnection(ConnectionString)
+            Dim command As OleDb.OleDbCommand = connection.CreateCommand()
+            command.CommandText = "DELETE FROM PARSEL WHERE ID=" + _ID.ToString
+            connection.Open()
+
+            Dim adapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter()
+            adapter.SelectCommand = command
+
+            Dim table As New DataTable
+            table.Locale = System.Globalization.CultureInfo.InvariantCulture
+            adapter.Fill(table)
+            adapter = Nothing
+            connection.Close()
+            table = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function DeleteKisi(_ID As Long) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim connection As New OleDb.OleDbConnection(ConnectionString)
+            Dim command As OleDb.OleDbCommand = connection.CreateCommand()
+            command.CommandText = "DELETE FROM KISI WHERE ID=" + _ID.ToString
+            connection.Open()
+
+            Dim adapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter()
+            adapter.SelectCommand = command
+
+            Dim table As New DataTable
+            table.Locale = System.Globalization.CultureInfo.InvariantCulture
+            adapter.Fill(table)
+            adapter = Nothing
+            connection.Close()
+            table = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function DeleteMustemilat(_ID As Long) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim connection As New OleDb.OleDbConnection(ConnectionString)
+            Dim command As OleDb.OleDbCommand = connection.CreateCommand()
+            command.CommandText = "DELETE FROM MUSTEMILAT WHERE ID=" + _ID.ToString
+            connection.Open()
+
+            Dim adapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter()
+            adapter.SelectCommand = command
+
+            Dim table As New DataTable
+            table.Locale = System.Globalization.CultureInfo.InvariantCulture
+            adapter.Fill(table)
+            adapter = Nothing
+            connection.Close()
+            table = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Public Function DeleteMevsimlik(_ID As Long) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim connection As New OleDb.OleDbConnection(ConnectionString)
+            Dim command As OleDb.OleDbCommand = connection.CreateCommand()
+            command.CommandText = "DELETE FROM MEVSIMLIK WHERE ID=" + _ID.ToString
+            connection.Open()
+
+            Dim adapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter()
+            adapter.SelectCommand = command
+
+            Dim table As New DataTable
+            table.Locale = System.Globalization.CultureInfo.InvariantCulture
+            adapter.Fill(table)
+            adapter = Nothing
+            connection.Close()
+            table = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+End Class
+
+Public Class Create
+
+    Public Function CreateKamuDBFromScratch(_FileName As String, _KamuVeriXMLFileName As String, _TableName As String) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            If System.IO.File.Exists(_FileName) = True Then
+                System.IO.File.Delete(_FileName)
+            End If
+            Dim MyCatalog As Catalog = New Catalog()
+            MyCatalog.Create("Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" + _FileName + ";Jet OLEDB:Engine Type=5")
+            MyCatalog = Nothing
+
+            Dim MyConnection As New OleDb.OleDbConnection("PROVIDER=Microsoft.Jet.OLEDB.4.0;Data Source =" & _FileName)
+            MyConnection.Open()
+
+            Dim KamuVeri As New DataSet
+            KamuVeri.ReadXml(_KamuVeriXMLFileName)
+            Dim KamuTable As DataTable = KamuVeri.Tables(_TableName)
+            For Each MyRow As DataRow In KamuTable.Rows
+                Dim strSQL As String = MyRow("TANIMLAMA")
+                CreateAccessTable(MyConnection, strSQL)
+            Next
+            KamuTable = Nothing
+            KamuVeri = Nothing
+
+            MyConnection.Close()
+            MyConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MsgBox(ex.Message)
+            MyStatus = False
+        End Try
+        Return MyStatus
+    End Function
+
+    Private Sub CreateAccessTable(_Connection As OleDb.OleDbConnection, strSQL As String)
+        Dim MyCommand1 As New OleDb.OleDbCommand(strSQL, _Connection)
+        MyCommand1.ExecuteNonQuery()
+        MyCommand1 = Nothing
+    End Sub
+
+    Public Function ConvertKamu5ToKamu6(_FileNameV5 As String, _FileNameV6 As String) As Boolean
+        Dim MyStatus As Boolean = False
+        Dim MyKamuDB As New Kamu.DB
+        Dim MyConnectionStringV5 As String = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & _FileNameV5 & ";User Id=admin;Password=;"
+        Dim MyConnectionStringV6 As String = "Provider=Microsoft.Jet.OLEDB.4.0;Data Source=" & _FileNameV6 & ";User Id=admin;Password=;"
+
+        MyKamuDB.ConnectionString = MyConnectionStringV6
+
+        Dim MyParsellerTable As Data.DataTable = MyKamuDB.GetDataTable("SELECT * FROM PARSELLER ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;", MyConnectionStringV5, "OleDbConnection")
+        Dim MyParsellerCollection As Collection = MyKamuDB.GetParsellerCollectionV5(MyParsellerTable)
+
+        Dim StatusParsel As Boolean = UpdateData(MyParsellerCollection, MyConnectionStringV6)
+
+        Dim MyMustemilatTable As Data.DataTable = MyKamuDB.GetDataTable("SELECT * FROM MUSTEMILAT ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;", MyConnectionStringV5, "OleDbConnection")
+        Dim MyMustemilatCollection As Collection = MyKamuDB.GetMustemilatCollectionV5(MyMustemilatTable)
+
+        Dim MyMevsimlikTable As Data.DataTable = MyKamuDB.GetDataTable("SELECT * FROM MEVSIMLIK ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;", MyConnectionStringV5, "OleDbConnection")
+        Dim MyMevsimlikCollection As Collection = MyKamuDB.GetMevsimlikCollectionV5(MyMevsimlikTable)
+
+        Dim StatusMustemilat As Boolean = UpdateData(MyMustemilatCollection, MyMevsimlikCollection, MyConnectionStringV6)
+
+        If StatusParsel And StatusMustemilat Then
+            MyStatus = True
+        End If
+
+        MyParsellerCollection = Nothing
+        MyMustemilatCollection = Nothing
+        MyMevsimlikCollection = Nothing
+        MyParsellerTable = Nothing
+        MyMustemilatTable = Nothing
+        MyMevsimlikTable = Nothing
+        MyKamuDB = Nothing
+        Return MyStatus
+    End Function
+
+    Private Function UpdateData(ParselCollection As Collection, _ConnectionString As String) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(_ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryStringParsel As String = "SELECT * FROM PARSEL"
+            Dim MyParselDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringParsel, MyKamuConnection))
+            Dim MyParselTable As New DataTable
+            MyParselDataAdapter.Fill(MyParselTable)
+
+            Dim MyQueryStringParselKod As String = "SELECT * FROM PARSEL_KOD"
+            Dim MyParselKodDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringParselKod, MyKamuConnection))
+            Dim MyParselKodTable As New DataTable
+            MyParselKodDataAdapter.Fill(MyParselKodTable)
+
+            Dim MyQueryStringKamu As String = "SELECT * FROM KAMULASTIRMA"
+            Dim MyKamuDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringKamu, MyKamuConnection))
+            Dim MyKamuTable As New DataTable
+            MyKamuDataAdapter.Fill(MyKamuTable)
+
+            Dim MyQueryStringKisi As String = "SELECT * FROM KISI"
+            Dim MyKisiDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringKisi, MyKamuConnection))
+            Dim MyKisiTable As New DataTable
+            MyKisiDataAdapter.Fill(MyKisiTable)
+
+            Dim MyQueryStringKisiKod As String = "SELECT * FROM KISI_KOD"
+            Dim MyKisiKodDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringKisiKod, MyKamuConnection))
+            Dim MyKisiKodTable As New DataTable
+            MyKisiKodDataAdapter.Fill(MyKisiKodTable)
+
+            Dim MyQueryStringMulkiyet As String = "SELECT * FROM MULKIYET"
+            Dim MyMulkiyetDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringMulkiyet, MyKamuConnection))
+            Dim MyMulkiyetTable As New DataTable
+            MyMulkiyetDataAdapter.Fill(MyMulkiyetTable)
+
+            Try
+                For Each _Parsel As Parsel In ParselCollection
+                    Dim MyParselRow As DataRow = MyParselTable.NewRow()
+                    MyParselRow("PROJE_ID") = _Parsel.ProjeID
+                    MyParselRow("IL") = _Parsel.Il
+                    MyParselRow("ILCE") = _Parsel.Ilce
+                    MyParselRow("KOY") = _Parsel.Koy
+                    MyParselRow("MAHALLE") = _Parsel.Mahalle
+                    MyParselRow("ADA") = _Parsel.AdaNo
+                    MyParselRow("PARSEL") = _Parsel.ParselNo
+                    MyParselRow("PAFTA") = _Parsel.PaftaNo
+                    MyParselRow("MEVKI") = _Parsel.Mevki
+                    MyParselRow("CILT") = _Parsel.Cilt
+                    MyParselRow("SAYFA") = _Parsel.Sayfa
+                    MyParselRow("CINSI") = _Parsel.Cinsi
+                    MyParselRow("TAPU_ALANI") = _Parsel.TapuAlani
+                    MyParselTable.Rows.Add(MyParselRow)
+
+                    Dim MyParselInfo As System.Reflection.FieldInfo = MyParselRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                    Dim NewParselID As Integer = CInt(MyParselInfo.GetValue(MyParselRow))
+
+                    Dim MyParselKodRow As DataRow = MyParselKodTable.NewRow()
+                    MyParselKodRow("PARSEL_ID") = NewParselID
+                    MyParselKodRow("KADASTRAL_DURUM") = _Parsel.Kod.KadastralDurum
+                    MyParselKodRow("ISTIMLAK_TURU") = _Parsel.Kod.IstimlakTuru
+                    MyParselKodRow("ISTIMLAK_SERHI") = _Parsel.Kod.IstimlakSerhi
+                    MyParselKodRow("DAVA10_DURUMU") = _Parsel.Kod.DavaDurumu10
+                    MyParselKodRow("DAVA27_DURUMU") = _Parsel.Kod.DavaDurumu10
+                    MyParselKodRow("EDINIM_DURUMU") = _Parsel.Kod.EdinimDurumu
+                    MyParselKodRow("ISTIMLAK_DISI") = _Parsel.Kod.IstimlakDisi
+                    MyParselKodRow("DEVIR_DURUMU") = _Parsel.Kod.DevirDurumu
+                    MyParselKodTable.Rows.Add(MyParselKodRow)
+
+                    Dim MyKamuRow As DataRow = MyKamuTable.NewRow()
+                    MyKamuRow("PARSEL_ID") = NewParselID
+                    MyKamuRow("MULKIYET_ALAN") = _Parsel.MulkiyetAlan
+                    MyKamuRow("DAIMI_IRTIFAK_ALAN") = _Parsel.DaimiIrtifakAlan
+                    MyKamuRow("GECICI_IRTIFAK_ALAN") = _Parsel.GeciciIrtifakAlan
+                    MyKamuRow("MULKIYET_BEDEL") = _Parsel.MulkiyetBedel
+                    MyKamuRow("DAIMI_IRTIFAK_BEDEL") = _Parsel.DaimiIrtifakBedel
+                    MyKamuRow("GECICI_IRTIFAK_BEDEL") = _Parsel.GeciciIrtifakBedel
+                    MyKamuTable.Rows.Add(MyKamuRow)
+
+                    For Each _Kisi As Kisi In _Parsel.Malikler
+                        Dim KisiID As Integer = GetMalikID(_Kisi, MyKisiTable)
+                        If KisiID = 0 Then
+                            Dim MyKisiRow As DataRow = MyKisiTable.NewRow()
+                            MyKisiRow("ADI") = _Kisi.Adi
+                            MyKisiRow("SOYADI") = _Kisi.Soyadi
+                            MyKisiRow("TC_KIMLIK_NO") = _Kisi.TCKimlikNo
+                            MyKisiRow("BABA") = _Kisi.Baba
+                            MyKisiRow("ADRES") = _Kisi.Adres
+                            MyKisiRow("TELEFON") = _Kisi.Telefon
+                            MyKisiRow("DURUMU") = _Kisi.Durumu
+                            MyKisiTable.Rows.Add(MyKisiRow)
+
+                            Dim MyKisiInfo As System.Reflection.FieldInfo = MyKisiRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                            Dim NewKisiID As Integer = CInt(MyKisiInfo.GetValue(MyKisiRow))
+                            KisiID = NewKisiID
+
+                            Dim MyKisiKodRow As DataRow = MyKisiKodTable.NewRow()
+                            MyKisiKodRow("KISI_ID") = KisiID
+                            MyKisiKodRow("MALIK_TIPI") = _Kisi.Kod.MalikTipi
+                            MyKisiKodRow("DAVETIYE_TEBLIG_DURUMU") = _Kisi.Kod.DavetiyeTebligDurumu
+                            MyKisiKodRow("DAVETIYE_ALINMA_DURUMU") = _Kisi.Kod.DavetiyeAlinmaDurumu
+                            MyKisiKodRow("GORUSME_DURUMU") = _Kisi.Kod.GorusmeDurumu
+                            MyKisiKodRow("GORUSME_NO") = _Kisi.Kod.GorusmeNo
+                            MyKisiKodRow("GORUSME_TARIHI") = _Kisi.Kod.GorusmeTarihi
+                            MyKisiKodRow("ANLASMA_DURUMU") = _Kisi.Kod.AnlasmaDurumu
+                            MyKisiKodRow("ANLASMA_TARIHI") = _Kisi.Kod.AnlasmaTarihi
+                            MyKisiKodRow("ANLASMA_DUSUNCELER") = _Kisi.Kod.AnlasmaDusunceler
+                            MyKisiKodRow("TESCIL_DURUMU") = _Kisi.Kod.TescilDurumu
+                            MyKisiKodTable.Rows.Add(MyKisiKodRow)
+                        End If
+
+                        Dim MyMulkiyetRow As DataRow = MyMulkiyetTable.NewRow()
+                        MyMulkiyetRow("PARSEL_ID") = NewParselID
+                        MyMulkiyetRow("KISI_ID") = KisiID
+                        MyMulkiyetRow("PAY") = _Kisi.HissePay
+                        MyMulkiyetRow("PAYDA") = _Kisi.HissePayda
+                        If _Kisi.TapuTarihi.Year > 1000 And _Kisi.TapuTarihi.Year < 2050 Then
+                            MyMulkiyetRow("TAPU_TARIHI") = _Kisi.TapuTarihi.ToShortDateString
+                        End If
+                        MyMulkiyetRow("DUSUNCELER") = _Kisi.Dusunceler
+                        MyMulkiyetTable.Rows.Add(MyMulkiyetRow)
+                    Next
+                Next
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyParselCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyParselCommandBuilder.DataAdapter = MyParselDataAdapter
+                MyParselDataAdapter.Update(MyParselTable)
+                MyParselTable = Nothing
+                MyParselCommandBuilder = Nothing
+                MyParselDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyParselKodCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyParselKodCommandBuilder.DataAdapter = MyParselKodDataAdapter
+                MyParselKodDataAdapter.Update(MyParselKodTable)
+                MyParselKodTable = Nothing
+                MyParselKodCommandBuilder = Nothing
+                MyParselKodDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyKamuCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyKamuCommandBuilder.DataAdapter = MyKamuDataAdapter
+                MyKamuDataAdapter.Update(MyKamuTable)
+                MyKamuTable = Nothing
+                MyKamuCommandBuilder = Nothing
+                MyKamuDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyKisiCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyKisiCommandBuilder.DataAdapter = MyKisiDataAdapter
+                MyKisiDataAdapter.Update(MyKisiTable)
+                MyKisiTable = Nothing
+                MyKisiCommandBuilder = Nothing
+                MyKisiDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyKisiKodCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyKisiKodCommandBuilder.DataAdapter = MyKisiKodDataAdapter
+                MyKisiKodDataAdapter.Update(MyKisiKodTable)
+                MyKisiKodTable = Nothing
+                MyKisiKodCommandBuilder = Nothing
+                MyKisiKodDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyMulkiyetCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyMulkiyetCommandBuilder.DataAdapter = MyMulkiyetDataAdapter
+                MyMulkiyetDataAdapter.Update(MyMulkiyetTable)
+                MyMulkiyetTable = Nothing
+                MyMulkiyetCommandBuilder = Nothing
+                MyMulkiyetDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+        Return MyStatus
+    End Function
+
+    Private Function UpdateData(MustemilatCollection As Collection, MevsimlikCollection As Collection, _ConnectionString As String) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New OleDb.OleDbConnection(_ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryStringMustemilat As String = "SELECT * FROM MUSTEMILAT"
+            Dim MyMustemilatDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringMustemilat, MyKamuConnection))
+            Dim MyMustemilatTable As New DataTable
+            MyMustemilatDataAdapter.Fill(MyMustemilatTable)
+
+            Dim MyQueryStringMevsimlik As String = "SELECT * FROM MEVSIMLIK"
+            Dim MyMevsimlikDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringMevsimlik, MyKamuConnection))
+            Dim MyMevsimlikTable As New DataTable
+            MyMevsimlikDataAdapter.Fill(MyMevsimlikTable)
+
+            Try
+                For Each _Mustemilat As Mustemilat In MustemilatCollection
+                    Dim MyMustemilatRow As DataRow = MyMustemilatTable.NewRow()
+                    MyMustemilatRow("PARSEL_ID") = _Mustemilat.ParselID
+                    MyMustemilatRow("SAHIP_ID") = _Mustemilat.SahipID
+                    MyMustemilatRow("TANIM") = _Mustemilat.Tanim
+                    MyMustemilatRow("ADET") = _Mustemilat.Adet
+                    MyMustemilatRow("FIYAT") = _Mustemilat.Fiyat
+                    MyMustemilatRow("MALIK") = _Mustemilat.Malik
+                    MyMustemilatRow("PAY") = _Mustemilat.Pay
+                    MyMustemilatRow("PAYDA") = _Mustemilat.Payda
+                    MyMustemilatRow("ODEME_ID") = _Mustemilat.OdemeID
+                    MyMustemilatTable.Rows.Add(MyMustemilatRow)
+                Next
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                For Each _Mevsimlik As Mevsimlik In MevsimlikCollection
+                    Dim MyMevsimlikRow As DataRow = MyMevsimlikTable.NewRow()
+                    MyMevsimlikRow("PARSEL_ID") = _Mevsimlik.ParselID
+                    MyMevsimlikRow("SAHIP_ID") = _Mevsimlik.SahipID
+                    MyMevsimlikRow("TANIM") = _Mevsimlik.Tanim
+                    MyMevsimlikRow("ALAN") = _Mevsimlik.Alan
+                    MyMevsimlikRow("BEDEL") = _Mevsimlik.Bedel
+                    MyMevsimlikRow("MALIK") = _Mevsimlik.Malik
+                    MyMevsimlikRow("PAY") = _Mevsimlik.Pay
+                    MyMevsimlikRow("PAYDA") = _Mevsimlik.Payda
+                    MyMevsimlikRow("ODEME_ID") = _Mevsimlik.OdemeID
+                    MyMevsimlikTable.Rows.Add(MyMevsimlikRow)
+                Next
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyMustemilatCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyMustemilatCommandBuilder.DataAdapter = MyMustemilatDataAdapter
+                MyMustemilatDataAdapter.Update(MyMustemilatTable)
+                MyMustemilatTable = Nothing
+                MyMustemilatCommandBuilder = Nothing
+                MyMustemilatDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            Try
+                Dim MyMevsimlikCommandBuilder As New OleDb.OleDbCommandBuilder
+                MyMevsimlikCommandBuilder.DataAdapter = MyMevsimlikDataAdapter
+                MyMevsimlikDataAdapter.Update(MyMevsimlikTable)
+                MyMevsimlikTable = Nothing
+                MyMevsimlikCommandBuilder = Nothing
+                MyMevsimlikDataAdapter = Nothing
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            End Try
+
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+        Return MyStatus
+    End Function
+
+    Private Function GetMalikID(_Kisi As Kisi, Kisiler As DataTable) As Long
+        Dim MyKisiID As Long = 0
+        For Each MyRow As DataRow In Kisiler.Rows
+            Dim SorguKisi As New Kisi(MyRow("ADI").ToString, MyRow("SOYADI").ToString, MyRow("BABA").ToString)
+            If SorguKisi.Equals(_Kisi) Then
+                Dim MyKisiInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                MyKisiID = CInt(MyKisiInfo.GetValue(MyRow))
+                Exit For
+            End If
+        Next
+        Return MyKisiID
+    End Function
+
+End Class
