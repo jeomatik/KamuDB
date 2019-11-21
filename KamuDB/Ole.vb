@@ -1,5 +1,5 @@
-﻿Imports Kamu.Objects
-Imports System.Data.OleDb
+﻿Imports System.Data.OleDb
+Imports Kamu.Objects
 
 Public Class Ole
     Public MyConnectionInfo As New ConnectionInfo
@@ -13,16 +13,14 @@ Public Class Ole
     End Sub
 
     Public Function GetDataTable(ByVal _SQLCommand As String) As DataTable
-        Dim MyTable As New DataTable
-        MyTable.Locale = System.Globalization.CultureInfo.InvariantCulture
+        Dim MyTable As New DataTable With {.Locale = System.Globalization.CultureInfo.InvariantCulture}
         Using connection As New OleDbConnection(MyConnectionInfo.ConnectionString)
             Try
                 Dim command As OleDb.OleDbCommand = connection.CreateCommand()
                 command.CommandText = _SQLCommand
                 If Not connection.State = ConnectionState.Open Then connection.Open()
 
-                Dim adapter As New OleDb.OleDbDataAdapter
-                adapter.SelectCommand = command
+                Dim adapter As New OleDb.OleDbDataAdapter With {.SelectCommand = command}
 
                 adapter.Fill(MyTable)
 

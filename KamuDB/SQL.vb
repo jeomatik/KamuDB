@@ -1,6 +1,5 @@
-﻿Imports Kamu.Objects
-Imports System.Data.SqlClient
-Imports System.Data.SqlTypes
+﻿Imports System.Data.SqlClient
+Imports Kamu.Objects
 
 Public Class SQL
     Public MyConnectionInfo As New ConnectionInfo

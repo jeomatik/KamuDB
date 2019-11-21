@@ -179,9 +179,9 @@ Public Class Create
         Dim MyObject As Boolean
         Try
             Select Case Connection.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = UpdateDataOleDb(ParselCollection, Connection.ConnectionString)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = UpdateDataSQL(ParselCollection, Connection.ConnectionString)
             End Select
         Catch ex As Exception
@@ -194,9 +194,9 @@ Public Class Create
         Dim MyObject As Boolean
         Try
             Select Case Connection.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.SqlConnection
                     MyObject = UpdateDataOleDb(MustemilatCollection, MevsimlikCollection, Connection.ConnectionString)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = UpdateDataSQL(MustemilatCollection, MevsimlikCollection, Connection.ConnectionString)
             End Select
         Catch ex As Exception

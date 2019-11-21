@@ -5,6 +5,7 @@ Public Class DB
     Public KamuVeriXMLDosya As String
     Public MyOle As New Ole
     Public MySQL As New SQL
+    Public MyPgSQL As New PgSQL
 
     Private _LogTut As Boolean
 
@@ -40,13 +41,15 @@ Public Class DB
         Try
             Dim MyDataTable As New DataTable
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     '_SQLCommand = _SQLCommand.Replace("+", "+")
                     MyDataTable = MyOle.GetDataTable(_SQLCommand)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     _SQLCommand = _SQLCommand.Replace("&", "+")
                     _SQLCommand = _SQLCommand.Replace("True", "1")
                     MyDataTable = MySQL.GetDataTable(_SQLCommand)
+                Case Connections.PgSqlConnection
+                    MyDataTable = MyPgSQL.GetDataTable(_SQLCommand)
             End Select
             Return MyDataTable
         Catch ex As Exception
@@ -59,10 +62,12 @@ Public Class DB
         Dim MyObject As New Collection()
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.CreateProjectList()
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.CreateProjectList()
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.CreateProjectList()
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -74,10 +79,12 @@ Public Class DB
         Dim MyObject As New Collection()
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.CreateComboList(strTableName, strColumnName)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.CreateComboList(strTableName, strColumnName)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.CreateComboList(strTableName, strColumnName)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -171,7 +178,7 @@ Public Class DB
                         Yeni_Kisi_ID = foundRows(i)(0)
                     Next i
                 End If
-               
+
             End If
             _Mustemilat.ParselID = Yeni_Parsel_ID
             _Mustemilat.SahipID = Yeni_Kisi_ID
@@ -1440,10 +1447,12 @@ Public Class DB
         Dim MyObject As New Proje
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetProje()
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetProje()
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetProje()
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1455,10 +1464,12 @@ Public Class DB
         Dim MyObject As New Proje
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetProje(ProjeID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetProje(ProjeID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetProje(ProjeID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1470,10 +1481,12 @@ Public Class DB
         Dim MyObject As New ProjeDetay
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetProjeDetay(ProjeID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetProjeDetay(ProjeID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetProjeDetay(ProjeID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1485,10 +1498,12 @@ Public Class DB
         Dim MyObject As New Parsel
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetParsel(ParselID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetParsel(ParselID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetParsel(ParselID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1500,10 +1515,12 @@ Public Class DB
         Dim MyObject As New ParselKod
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetParselKod(ParselID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetParselKod(ParselID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetParselKod(ParselID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1515,10 +1532,12 @@ Public Class DB
         Dim MyObject As New ParselDetay
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetParselDetay(ParselID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetParselDetay(ParselID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetParselDetay(ParselID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1530,10 +1549,12 @@ Public Class DB
         Dim MyObject As New Collection
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetEmsaller(ParselID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetEmsaller(ParselID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetEmsaller(ParselID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1545,10 +1566,12 @@ Public Class DB
         Dim MyObject As New Kisi
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetKisi(KisiID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetKisi(KisiID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKisi(KisiID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1560,10 +1583,12 @@ Public Class DB
     '    Dim MyObject As New Kisi
     '    Try
     '        Select Case ConnectionInfo.ConnectionType
-    '            Case "OleDbConnection"
+    '            Case Connections.OleDbConnection
     '                MyObject = MyOle.GetKisi(KisiID, MulkiyetID)
-    '            Case "SqlConnection"
+    '           Case Connections.SqlConnection
     '                MyObject = MySQL.GetKisi(KisiID, MulkiyetID)
+    '           Case Connections.PgSqlConnection
+    '                MyObject = MyPgSQL.GetKisi(KisiID, MulkiyetID)
     '        End Select
     '    Catch ex As Exception
     '        'MyObject = Nothing
@@ -1575,10 +1600,12 @@ Public Class DB
         Dim MyObject As New Kisi
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetKisi(TCKimlikNo)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetKisi(TCKimlikNo)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKisi(TCKimlikNo)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1590,10 +1617,12 @@ Public Class DB
         Dim MyObject As New KisiKod
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetKisiKod(KisiID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetKisiKod(KisiID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKisiKod(KisiID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1605,10 +1634,12 @@ Public Class DB
         Dim MyObject As New Collection
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetVarisler(KisiID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetVarisler(KisiID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetVarisler(KisiID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1620,10 +1651,12 @@ Public Class DB
         Dim MyObject As New Collection
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMurisler(KisiID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMurisler(KisiID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMurisler(KisiID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1635,10 +1668,12 @@ Public Class DB
         Dim MyObject As New Parsel
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetKamu(KamuID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetKamu(KamuID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKamu(KamuID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1650,9 +1685,11 @@ Public Class DB
         Dim MyObject As New Mustemilat
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMustemilat(MustemilatID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
+                    MyObject = MySQL.GetMustemilat(MustemilatID)
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMustemilat(MustemilatID)
             End Select
         Catch ex As Exception
@@ -1665,10 +1702,12 @@ Public Class DB
         Dim MyObject As New Collection
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMustemilatlar(ParselID, SahipID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMustemilatlar(ParselID, SahipID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMustemilatlar(ParselID, SahipID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1680,10 +1719,12 @@ Public Class DB
         Dim MyObject As New Mevsimlik
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMevsimlik(MevsimlikID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMevsimlik(MevsimlikID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMevsimlik(MevsimlikID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1695,10 +1736,12 @@ Public Class DB
         Dim MyObject As New Collection
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMevsimlikler(ParselID, SahipID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMevsimlikler(ParselID, SahipID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMevsimlikler(ParselID, SahipID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1710,10 +1753,12 @@ Public Class DB
         Dim MyObject As New DavaAcele
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetDavaAcele(DavaAceleID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetDavaAcele(DavaAceleID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetDavaAcele(DavaAceleID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1725,10 +1770,12 @@ Public Class DB
         Dim MyObject As New DavaTescil
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetDavaTescil(DavaTescilID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetDavaTescil(DavaTescilID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetDavaTescil(DavaTescilID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1740,10 +1787,12 @@ Public Class DB
         Dim MyObject As New Odeme
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetOdeme(OdemeID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetOdeme(OdemeID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetOdeme(OdemeID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1755,10 +1804,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetParselID(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetParselID(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetParselID(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1770,10 +1821,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetKisiID(_Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetKisiID(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKisiID(_Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1785,10 +1838,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetProjeID(_Proje)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetProjeID(_Proje)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetProjeID(_Proje)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1800,10 +1855,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetKamuID(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetKamuID(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKamuID(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1815,10 +1872,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetDavaAceleID(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetDavaAceleID(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetDavaAceleID(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1830,10 +1889,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetDavaTescilID(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetDavaTescilID(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetDavaTescilID(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1845,10 +1906,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMustemilatOdemeID(_Mustemilat)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMustemilatOdemeID(_Mustemilat)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMustemilatOdemeID(_Mustemilat)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1860,10 +1923,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMevsimlikOdemeID(_Mevsimlik)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMevsimlikOdemeID(_Mevsimlik)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMevsimlikOdemeID(_Mevsimlik)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1875,10 +1940,12 @@ Public Class DB
         Dim MyObject As New User
         Try
             Select Case _Connection.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     'MyObject = MyOle.GetUser(_Connection, _User)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetUser(_Connection, _User)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetUser(_Connection, _User)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1890,10 +1957,12 @@ Public Class DB
         Dim MyObject As New Kisi
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMulkiyet(KisiID, MulkiyetID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMulkiyet(KisiID, MulkiyetID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMulkiyet(KisiID, MulkiyetID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1905,10 +1974,12 @@ Public Class DB
         Dim MyObject As New Kisi
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.GetMulkiyet(KisiID, MulkiyetID, GetOption)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.GetMulkiyet(KisiID, MulkiyetID, GetOption)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetMulkiyet(KisiID, MulkiyetID, GetOption)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1924,10 +1995,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddParsel(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddParsel(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddParsel(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1939,10 +2012,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddParselKod(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddParselKod(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddParselKod(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1954,10 +2029,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddParselDetay(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddParselDetay(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddParselDetay(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1969,10 +2046,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddEmsal(_Parsel, _Emsal)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddEmsal(_Parsel, _Emsal)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddEmsal(_Parsel, _Emsal)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1984,10 +2063,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddKisi(_Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddKisi(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddKisi(_Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1999,10 +2080,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddKisiKod(_Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddKisiKod(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddKisiKod(_Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2014,10 +2097,12 @@ Public Class DB
     '    Dim MyObject As Long
     '    Try
     '        Select Case ConnectionInfo.ConnectionType
-    '            Case "OleDbConnection"
+    '            Case Connections.OleDbConnection
     '                MyObject = MyOle.AddKisiBanka(_Kisi)
-    '            Case "SqlConnection"
+    '           Case Connections.SqlConnection
     '                MyObject = MySQL.AddKisiBanka(_Kisi)
+    '           Case Connections.PgSqlConnection
+    '                MyObject = MyPgSQL.AddKisiBanka(_Kisi)
     '        End Select
     '    Catch ex As Exception
     '        'MyObject = Nothing
@@ -2029,10 +2114,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddKamu(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddKamu(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddKamu(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2044,10 +2131,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddMulkiyet(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddMulkiyet(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddMulkiyet(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2059,10 +2148,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddMulkiyet(_Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddMulkiyet(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddMulkiyet(_Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2074,10 +2165,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddMustemilat(_Mustemilat)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddMustemilat(_Mustemilat)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddMustemilat(_Mustemilat)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2089,10 +2182,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddMevsimlik(_Mevsimlik)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddMevsimlik(_Mevsimlik)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddMevsimlik(_Mevsimlik)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2104,10 +2199,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddDavaTescil(_DavaTescil)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddDavaTescil(_DavaTescil)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddDavaTescil(_DavaTescil)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2119,10 +2216,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddDavaAcele(_DavaAcele)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddDavaAcele(_DavaAcele)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddDavaAcele(_DavaAcele)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2134,10 +2233,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     'MyObject = MyOle.AddDavali(_Dava, _Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     'MyObject = MySQL.AddDavali(_Dava, _Kisi)
+                Case Connections.PgSqlConnection
+                    'MyObject = MyPgSQL.AddDavali(_Dava, _Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2149,10 +2250,12 @@ Public Class DB
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddVaris(_Muris, _Varis)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddVaris(_Muris, _Varis)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddVaris(_Muris, _Varis)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2164,10 +2267,12 @@ Public Class DB
         Dim MyObject As New Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddOdeme(_Odeme)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddOdeme(_Odeme)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddOdeme(_Odeme)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2179,10 +2284,12 @@ Public Class DB
         Dim MyObject As New Long
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.AddOdemeBelge(_Belge)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.AddOdemeBelge(_Belge)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.AddOdemeBelge(_Belge)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2195,9 +2302,9 @@ Public Class DB
         Try
             If LogTut Then
                 'Select Case ConnectionInfo.ConnectionType   'hiç bir şey açmadan seçeneklere girince kayıt anında hata veriyor.
-                '    Case "OleDbConnection"
+                '    Case Connections.OleDbConnection
                 '        'MyObject = MyOle.AddLog(_Log)
-                '    Case "SqlConnection"
+                '   Case Connections.SqlConnection
                 MyObject = MySQL.AddLog(_Log)
                 'End Select
             End If
@@ -2215,10 +2322,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateKamu(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateKamu(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateKamu(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2230,10 +2339,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateProject(_Proje)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateProject(_Proje)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateProject(_Proje)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2245,10 +2356,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateKisi(_Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateKisi(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateKisi(_Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2260,10 +2373,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateKisiKod(_Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateKisiKod(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateKisiKod(_Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2275,10 +2390,12 @@ Public Class DB
     '    Dim MyObject As Boolean
     '    Try
     '        Select Case ConnectionInfo.ConnectionType
-    '            Case "OleDbConnection"
+    '            Case Connections.OleDbConnection
     '                MyObject = MyOle.UpdateKisiBanka(_Kisi, _BankaID)
-    '            Case "SqlConnection"
+    '           Case Connections.SqlConnection
     '                MyObject = MySQL.UpdateKisiBanka(_Kisi, _BankaID)
+    '           Case Connections.PgSqlConnection
+    '                MyObject = MyPgSQL.UpdateKisiBanka(_Kisi, _BankaID)
     '        End Select
     '    Catch ex As Exception
     '        'MyObject = Nothing
@@ -2290,10 +2407,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateParsel(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateParsel(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateParsel(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2305,10 +2424,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateParselKod(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateParselKod(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateParselKod(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2320,10 +2441,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateParselDetay(_Parsel)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateParselDetay(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateParselDetay(_Parsel)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2335,10 +2458,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateMulkiyet(_Kisi)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateMulkiyet(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateMulkiyet(_Kisi)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2350,10 +2475,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateMustemilat(_Mustemilat)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateMustemilat(_Mustemilat)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateMustemilat(_Mustemilat)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2365,10 +2492,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateMevsimlik(_Mevsimlik)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateMevsimlik(_Mevsimlik)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateMevsimlik(_Mevsimlik)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2380,10 +2509,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateDavaTescil(_DavaTescil)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateDavaTescil(_DavaTescil)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateDavaTescil(_DavaTescil)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2395,10 +2526,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateDavaAcele(_DavaAcele)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateDavaAcele(_DavaAcele)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateDavaAcele(_DavaAcele)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2410,10 +2543,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateOdeme(_Odeme)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateOdeme(_Odeme)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateOdeme(_Odeme)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2425,10 +2560,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.UpdateOdeme(_Odeme, _OnayID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.UpdateOdeme(_Odeme, _OnayID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.UpdateOdeme(_Odeme, _OnayID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2443,10 +2580,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteParsel(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteParsel(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteParsel(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2458,10 +2597,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteKisi(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteKisi(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteKisi(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2473,10 +2614,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteMustemilat(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteMustemilat(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteMustemilat(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2488,10 +2631,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteMevsimlik(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteMevsimlik(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteMevsimlik(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2503,10 +2648,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteMiras(_MurisID, _VarisID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteMiras(_MurisID, _VarisID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteMiras(_MurisID, _VarisID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2518,10 +2665,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteEmsal(_ParselID, _EmsalID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteEmsal(_ParselID, _EmsalID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteEmsal(_ParselID, _EmsalID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2533,10 +2682,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteMalik(_ParselID, _MalikID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteMalik(_ParselID, _MalikID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteMalik(_ParselID, _MalikID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2548,10 +2699,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteMalik(_MulkiyetID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteMalik(_MulkiyetID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteMalik(_MulkiyetID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2563,10 +2716,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteOdeme(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteOdeme(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteOdeme(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2578,10 +2733,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteOdemeBelge(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteOdemeBelge(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteOdemeBelge(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2593,10 +2750,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteDavaTescil(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteDavaTescil(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteDavaTescil(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2608,10 +2767,12 @@ Public Class DB
         Dim MyObject As Boolean
         Try
             Select Case ConnectionInfo.ConnectionType
-                Case "OleDbConnection"
+                Case Connections.OleDbConnection
                     MyObject = MyOle.DeleteDavaAcele(_ID)
-                Case "SqlConnection"
+                Case Connections.SqlConnection
                     MyObject = MySQL.DeleteDavaAcele(_ID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.DeleteDavaAcele(_ID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
