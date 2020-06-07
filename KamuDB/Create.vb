@@ -5,41 +5,47 @@ Imports System.Data.OleDb
 
 Public Class Create
 
-    Public Function ConvertKamu5ToKamu6(_ConnectionInfo5 As ConnectionInfo, _ConnectionInfo6 As ConnectionInfo) As Boolean
-        Dim MyStatus As Boolean = False
-        Dim MyKamuDB5 As New Kamu.DB(_ConnectionInfo5)
-        Dim MyKamuDB6 As New Kamu.DB(_ConnectionInfo6)
+    Public Function ConvertKamu4ToKamu6(strProjectGUID As String, _ConnectionInfo4 As ConnectionInfo, _ConnectionInfo6 As ConnectionInfo) As Boolean
+        Dim MyStatus As Boolean
+        Dim MyKamuDB4 As New DB(_ConnectionInfo4)
+        Dim MyKamuDB6 As New DB(_ConnectionInfo6)
+        Dim MyKamuConversion As New Conversion
 
-        MyKamuDB5.MyOle.MyConnectionInfo = _ConnectionInfo5
+        MyKamuDB4.MyOle.MyConnectionInfo = _ConnectionInfo4
         MyKamuDB6.MyOle.MyConnectionInfo = _ConnectionInfo6
 
         Using connection As New OleDbConnection(_ConnectionInfo6.ConnectionString)
             If Not connection.State = ConnectionState.Open Then connection.Open()
             Try
-                Dim MyCommand As New OleDb.OleDbCommand("ALTER TABLE [PARSEL] ADD ESKI_ID Long", connection)
-                MyCommand.ExecuteNonQuery()
-                MyCommand = Nothing
+                Using MyCommand As New OleDbCommand("ALTER TABLE [PARSEL] ADD ESKI_ID Long", connection)
+                    MyCommand.ExecuteNonQuery()
+                End Using
 
-                Dim MyCommand1 As New OleDb.OleDbCommand("ALTER TABLE [KISI] ADD ESKI_ID Long", connection)
-                MyCommand1.ExecuteNonQuery()
-                MyCommand1 = Nothing
+                Using MyCommand1 As New OleDbCommand("ALTER TABLE [KISI] ADD ESKI_ID Long", connection)
+                    MyCommand1.ExecuteNonQuery()
+                End Using
             Catch ex As Exception
 
+            Finally
+                connection.Close()
             End Try
         End Using
 
-        Dim MyParsellerTable As Data.DataTable = MyKamuDB5.GetDataTable("SELECT * FROM PARSELLER ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
-        Dim MyParsellerCollection As Collection = MyKamuDB5.GetParsellerCollectionV5(MyParsellerTable)
-
+        Dim MyParsellerTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM PARSELLER ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
+        Dim MyParsellerCollection As Collection = MyKamuConversion.GetParsellerCollectionV4(MyParsellerTable, strProjectGUID)
         Dim StatusParsel As Boolean = UpdateData(MyParsellerCollection, _ConnectionInfo6)
 
-        Dim MyMustemilatTable As Data.DataTable = MyKamuDB5.GetDataTable("SELECT * FROM MUSTEMILAT ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
-        Dim MyMustemilatCollection As Collection = MyKamuDB5.GetMustemilatCollectionV5(MyMustemilatTable)
+        Dim MyMustemilatTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM MUSTEMILAT ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
+        Dim MyMustemilatCollection As Collection = MyKamuConversion.GetMustemilatCollectionV4(MyMustemilatTable)
+        Dim MyMevsimlikTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM MEVSIMLIK ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
+        Dim MyMevsimlikCollection As Collection = MyKamuConversion.GetMevsimlikCollectionV4(MyMevsimlikTable)
+        'Dim StatusMustemilat As Boolean = UpdateData(MyMustemilatCollection, MyMevsimlikCollection,MyParsellerCollection, _ConnectionInfo6)
 
-        Dim MyMevsimlikTable As Data.DataTable = MyKamuDB5.GetDataTable("SELECT * FROM MEVSIMLIK ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
-        Dim MyMevsimlikCollection As Collection = MyKamuDB5.GetMevsimlikCollectionV5(MyMevsimlikTable)
+        MyParsellerCollection.Clear()
+        MyMustemilatCollection.Clear()
+        MyMevsimlikCollection.Clear()
 
-        Dim StatusMustemilat As Boolean = UpdateData(MyMustemilatCollection, MyMevsimlikCollection, _ConnectionInfo6)
+        Dim StatusMustemilat As Boolean = True
 
         If StatusParsel And StatusMustemilat Then
             MyStatus = True
@@ -54,19 +60,20 @@ Public Class Create
                     MyCommand1.ExecuteNonQuery()
                     MyCommand1 = Nothing
                 Catch ex As Exception
-
+                Finally
+                    connection.Close()
                 End Try
+
             End Using
         End If
 
-        MyParsellerCollection = Nothing
-        MyMustemilatCollection = Nothing
-        MyMevsimlikCollection = Nothing
-        MyParsellerTable = Nothing
-        MyMustemilatTable = Nothing
-        MyMevsimlikTable = Nothing
-        MyKamuDB5 = Nothing
-        MyKamuDB6 = Nothing
+
+
+        'MyParsellerTable = Nothing
+        'MyMustemilatTable = Nothing
+        'MyMevsimlikTable = Nothing
+        'MyKamuDB5 = Nothing
+        'MyKamuDB6 = Nothing
         Return MyStatus
     End Function
 
@@ -89,7 +96,8 @@ Public Class Create
                 MyCommand1.ExecuteNonQuery()
                 MyCommand1 = Nothing
             Catch ex As Exception
-
+            Finally
+                connection.Close()
             End Try
         End Using
 
@@ -99,39 +107,43 @@ Public Class Create
         'Dim MyParsellerTable As Data.DataTable = MyKamuSourceDB.GetDataTable("SELECT PARSEL.ID AS ID, PARSEL.PROJE_ID, PARSEL.KOD, PARSEL.IL, PARSEL.ILCE, PARSEL.KOY, PARSEL.MAHALLE, PARSEL.ADA, PARSEL.PARSEL, PARSEL.PAFTA, PARSEL.MEVKI, PARSEL.CINSI, PARSEL.CILT, PARSEL.SAYFA, PARSEL.TAPU_ALANI, PARSEL_KOD.ID AS PARSEL_KOD_ID, PARSEL_KOD.PARSEL_ID AS PARSEL_KOD_PARSEL_ID, PARSEL_KOD.KADASTRAL_DURUM, PARSEL_KOD.MALIK_TIPI, PARSEL_KOD.ISTIMLAK_TURU, PARSEL_KOD.ISTIMLAK_SERHI, PARSEL_KOD.DAVA10_DURUMU, PARSEL_KOD.DAVA27_DURUMU, PARSEL_KOD.EDINIM_DURUMU, PARSEL_KOD.ISTIMLAK_DISI, PARSEL_KOD.DEVIR_DURUMU, PARSEL_KOD.ODEME_DURUMU, KISI.ID AS KISI_ID, KISI.ADI, KISI.SOYADI, KISI.TC_KIMLIK_NO, KISI.BABA, KISI.ADRES, KISI.TELEFON, KISI.CINSIYET, KISI.DURUMU, KISI.DOGUM_YERI, KISI.DOGUM_TARIHI, KISI_KOD.ID AS KISI_KOD_ID, KISI_KOD.KISI_ID, KISI_KOD.DAVETIYE_TEBLIG_DURUMU, KISI_KOD.DAVETIYE_ALINMA_DURUMU, KISI_KOD.GORUSME_DURUMU, KISI_KOD.GORUSME_NO, KISI_KOD.GORUSME_TARIHI, KISI_KOD.ANLASMA_DURUMU, KISI_KOD.ANLASMA_TARIHI, KISI_KOD.ANLASMA_DUSUNCELER, KISI_KOD.TESCIL_DURUMU, KAMULASTIRMA.ID AS KAMULASTIRMA_ID, KAMULASTIRMA.PARSEL_ID AS KAMULASTIRMA_PARSEL_ID, KAMULASTIRMA.MULKIYET_ALAN, KAMULASTIRMA.IRTIFAK_ALAN, KAMULASTIRMA.GECICI_IRTIFAK_ALAN, KAMULASTIRMA.MULKIYET_BEDEL, KAMULASTIRMA.IRTIFAK_BEDEL, KAMULASTIRMA.GECICI_IRTIFAK_BEDEL, KAMULASTIRMA.KAMULASTIRMA_AMACI, KAMULASTIRMA.ARAZI_VASFI, KAMULASTIRMA.YAYGIN_MUNAVEBE_SISTEMI, KAMULASTIRMA.DEGERLEME_RAPORU, KAMULASTIRMA.DEGERLEME_TARIHI, KAMULASTIRMA.YILLIK_ORTALAMA_NET_GELIR, KAMULASTIRMA.KAPITALIZASYON_FAIZI, KAMULASTIRMA.OBJEKTIF_ARTIS, KAMULASTIRMA.ART_KISIM_ARTIS, KAMULASTIRMA.VERIM_KAYBI, KAMULASTIRMA.ODEME_ID, MULKIYET.PAY, MULKIYET.PAYDA, MULKIYET.TAPU_TARIHI, MULKIYET.DUSUNCELER FROM ((KISI INNER JOIN KISI_KOD ON KISI.[ID] = KISI_KOD.[KISI_ID]) INNER JOIN MULKIYET ON KISI.[ID] = MULKIYET.[KISI_ID]) INNER JOIN (PARSEL_KOD INNER JOIN (KAMULASTIRMA INNER JOIN PARSEL ON KAMULASTIRMA.[PARSEL_ID] = PARSEL.[ID]) ON PARSEL_KOD.[PARSEL_ID] = PARSEL.[ID]) ON MULKIYET.[PARSEL_ID] = PARSEL.[ID] ORDER BY PARSEL.IL, PARSEL.ILCE, PARSEL.KOY, PARSEL.MAHALLE, PARSEL.ADA, PARSEL.PARSEL;")
 
         Dim MyParsellerCollection As Collection = MyKamuSourceDB.GetParselCollection(MyParsellerTable, False, True)
-        MyParsellerTable = Nothing
+        'MyParsellerTable = Nothing
 
         MyParsellerCollection = MyKamuSourceDB.DefineVerasetDurumu(MyParsellerCollection)
 
         Dim StatusParsel As Boolean = UpdateData(MyParsellerCollection, _TargetConnectionInfo)
-        MyParsellerCollection = Nothing
+        'MyParsellerCollection = Nothing
 
-        Dim MyParselConversionTable As Data.DataTable = MyKamuTargetDB.GetDataTable("SELECT ID, ESKI_ID FROM PARSEL")
-        Dim MyKisiConversionTable As Data.DataTable = MyKamuTargetDB.GetDataTable("SELECT ID, ESKI_ID FROM KISI")
+        Using MyParselConversionTable As DataTable = MyKamuTargetDB.GetDataTable("SELECT ID, ESKI_ID FROM PARSEL")
+            Using MyKisiConversionTable As DataTable = MyKamuTargetDB.GetDataTable("SELECT ID, ESKI_ID FROM KISI")
 
-        Dim MyMustemilatTable As Data.DataTable = MyKamuSourceDB.GetDataTable("SELECT * FROM MUSTEMILAT ORDER BY ID;")
-        Dim MyMustemilatCollection As Collection = MyKamuSourceDB.GetMustemilatCollection(MyMustemilatTable)
-        MyMustemilatTable = Nothing
+                Using MyMustemilatTable As DataTable = MyKamuSourceDB.GetDataTable("SELECT * FROM MUSTEMILAT ORDER BY ID;")
+                    Dim MyMustemilatCollection As Collection = MyKamuSourceDB.GetMustemilatCollection(MyMustemilatTable)
+                    'MyMustemilatTable = Nothing
 
-        Dim MyMevsimlikTable As Data.DataTable = MyKamuSourceDB.GetDataTable("SELECT * FROM MEVSIMLIK ORDER BY ID;")
-        Dim MyMevsimlikCollection As Collection = MyKamuSourceDB.GetMevsimlikCollection(MyMevsimlikTable)
-        MyMevsimlikTable = Nothing
+                    Using MyMevsimlikTable As DataTable = MyKamuSourceDB.GetDataTable("SELECT * FROM MEVSIMLIK ORDER BY ID;")
+                        Dim MyMevsimlikCollection As Collection = MyKamuSourceDB.GetMevsimlikCollection(MyMevsimlikTable)
+                        'MyMevsimlikTable = Nothing
 
-        MyMustemilatCollection = MyKamuSourceDB.DefineMustemilatOwnerShip(MyMustemilatCollection, MyParselConversionTable, MyKisiConversionTable)
-        MyMevsimlikCollection = MyKamuSourceDB.DefineMevsimlikOwnerShip(MyMevsimlikCollection, MyParselConversionTable, MyKisiConversionTable)
-        MyParselConversionTable = Nothing
-        MyKisiConversionTable = Nothing
+                        MyMustemilatCollection = MyKamuSourceDB.DefineMustemilatOwnerShip(MyMustemilatCollection, MyParselConversionTable, MyKisiConversionTable)
+                        MyMevsimlikCollection = MyKamuSourceDB.DefineMevsimlikOwnerShip(MyMevsimlikCollection, MyParselConversionTable, MyKisiConversionTable)
+                        'MyParselConversionTable = Nothing
+                        'MyKisiConversionTable = Nothing
 
-        Dim StatusMustemilat As Boolean = UpdateData(MyMustemilatCollection, MyMevsimlikCollection, _TargetConnectionInfo)
-        MyMustemilatCollection = Nothing
-        MyMevsimlikCollection = Nothing
+                        Dim StatusMustemilat As Boolean = UpdateData(MyMustemilatCollection, MyMevsimlikCollection, _TargetConnectionInfo)
+                        'MyMustemilatCollection = Nothing
+                        'MyMevsimlikCollection = Nothing
 
-        MyKamuSourceDB = Nothing
-        MyKamuTargetDB = Nothing
+                        'MyKamuSourceDB = Nothing
+                        'MyKamuTargetDB = Nothing
 
-        If StatusParsel And StatusMustemilat Then
-            MyStatus = True
-        End If
+                        If StatusParsel And StatusMustemilat Then
+                            MyStatus = True
+                        End If
+                    End Using
+                End Using
+            End Using
+        End Using
 
         Return MyStatus
     End Function
@@ -170,9 +182,9 @@ Public Class Create
     End Function
 
     Private Sub CreateAccessTable(_Connection As OleDb.OleDbConnection, strSQL As String)
-        Dim MyCommand1 As New OleDb.OleDbCommand(strSQL, _Connection)
-        MyCommand1.ExecuteNonQuery()
-        MyCommand1 = Nothing
+        Using MyCommand1 As New OleDbCommand(strSQL, _Connection)
+            MyCommand1.ExecuteNonQuery()
+        End Using
     End Sub
 
     Private Function UpdateData(ParselCollection As Collection, Connection As ConnectionInfo) As Boolean
@@ -194,7 +206,7 @@ Public Class Create
         Dim MyObject As Boolean
         Try
             Select Case Connection.ConnectionType
-                Case Connections.SqlConnection
+                Case Connections.OleDbConnection
                     MyObject = UpdateDataOleDb(MustemilatCollection, MevsimlikCollection, Connection.ConnectionString)
                 Case Connections.SqlConnection
                     MyObject = UpdateDataSQL(MustemilatCollection, MevsimlikCollection, Connection.ConnectionString)
@@ -249,13 +261,28 @@ Public Class Create
             Try
                 For Each _Parsel As Parsel In ParselCollection
                     Dim MyParselRow As DataRow = MyParselTable.NewRow()
+                    Dim NewParselGUID As String = Guid.NewGuid.ToString("N")
                     MyParselRow("ESKI_ID") = _Parsel.ID
-                    MyParselRow("PROJE_ID") = _Parsel.ProjeID
+                    MyParselRow("PROJE_GLOBALID") = _Parsel.ProjeGUID
+                    MyParselRow("GLOBALID") = NewParselGUID
                     MyParselRow("KOD") = _Parsel.Kod.Kod
                     MyParselRow("IL") = _Parsel.Il
                     MyParselRow("ILCE") = _Parsel.Ilce
-                    MyParselRow("KOY") = _Parsel.Koy
-                    MyParselRow("MAHALLE") = _Parsel.Mahalle
+                    Dim YeniKoyMahalleAd As String
+                    If Trim(_Parsel.Mahalle) = "" Then
+                        YeniKoyMahalleAd = _Parsel.Koy
+                        If Trim(_Parsel.Koy) = "" Then
+                            YeniKoyMahalleAd = "-"
+                        End If
+                    Else
+                        If Trim(_Parsel.Koy) = "" Then
+                            YeniKoyMahalleAd = _Parsel.Mahalle
+                        Else
+                            YeniKoyMahalleAd = _Parsel.Koy + "-" + _Parsel.Mahalle
+                        End If
+                    End If
+                    'MyParselRow("KOY") = _Parsel.Koy
+                    MyParselRow("MAHALLE") = YeniKoyMahalleAd
                     MyParselRow("ADA") = _Parsel.AdaNo
                     MyParselRow("PARSEL") = _Parsel.ParselNo
                     MyParselRow("PAFTA") = _Parsel.PaftaNo
@@ -266,11 +293,11 @@ Public Class Create
                     MyParselRow("TAPU_ALANI") = _Parsel.TapuAlani
                     MyParselTable.Rows.Add(MyParselRow)
 
-                    Dim MyParselInfo As System.Reflection.FieldInfo = MyParselRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
-                    Dim NewParselID As Integer = CInt(MyParselInfo.GetValue(MyParselRow))
+                    'Dim MyParselInfo As System.Reflection.FieldInfo = MyParselRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                    'Dim NewParselID As Integer = CInt(MyParselInfo.GetValue(MyParselRow))
 
                     Dim MyParselKodRow As DataRow = MyParselKodTable.NewRow()
-                    MyParselKodRow("PARSEL_ID") = NewParselID
+                    MyParselKodRow("PARSEL_GLOBALID") = NewParselGUID
                     MyParselKodRow("BOLGE_ID") = _Parsel.Kod.BolgeID
                     MyParselKodRow("KADASTRAL_DURUM") = _Parsel.Kod.KadastralDurum
                     MyParselKodRow("MALIK_TIPI") = _Parsel.Kod.MalikTipi
@@ -285,7 +312,9 @@ Public Class Create
                     MyParselKodTable.Rows.Add(MyParselKodRow)
 
                     Dim MyKamuRow As DataRow = MyKamuTable.NewRow()
-                    MyKamuRow("PARSEL_ID") = NewParselID
+                    Dim KamuGUID As String = Guid.NewGuid.ToString("N")
+                    MyKamuRow("GLOBALID") = KamuGUID
+                    MyKamuRow("PARSEL_GLOBALID") = NewParselGUID
                     MyKamuRow("MULKIYET_ALAN") = _Parsel.MulkiyetAlan
                     MyKamuRow("IRTIFAK_ALAN") = _Parsel.IrtifakAlan
                     MyKamuRow("GECICI_IRTIFAK_ALAN") = _Parsel.GeciciIrtifakAlan
@@ -305,10 +334,12 @@ Public Class Create
                     MyKamuTable.Rows.Add(MyKamuRow)
 
                     For Each _Kisi As Kisi In _Parsel.Malikler
-                        Dim KisiID As Integer = GetMalikID(_Kisi, MyKisiTable)
-                        If KisiID = 0 Then
+                        Dim KisiGUID As String = GetMalikGUID(_Kisi, MyKisiTable)
+                        If KisiGUID = "" Then
                             Dim MyKisiRow As DataRow = MyKisiTable.NewRow()
+                            Dim NewKisiGUID As String = Guid.NewGuid.ToString("N")
                             MyKisiRow("ESKI_ID") = _Kisi.ID
+                            MyKisiRow("GLOBALID") = NewKisiGUID
                             MyKisiRow("ADI") = _Kisi.Adi
                             MyKisiRow("SOYADI") = _Kisi.Soyadi
                             MyKisiRow("TC_KIMLIK_NO") = _Kisi.TCKimlikNo
@@ -319,12 +350,13 @@ Public Class Create
                             MyKisiRow("CINSIYET") = _Kisi.Cinsiyet
                             MyKisiTable.Rows.Add(MyKisiRow)
 
-                            Dim MyKisiInfo As System.Reflection.FieldInfo = MyKisiRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
-                            Dim NewKisiID As Integer = CInt(MyKisiInfo.GetValue(MyKisiRow))
-                            KisiID = NewKisiID
+                            'Dim MyKisiInfo As System.Reflection.FieldInfo = MyKisiRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                            'Dim NewKisiID As Integer = CInt(MyKisiInfo.GetValue(MyKisiRow))
+                            'KisiID = NewKisiID
+                            KisiGUID = Guid.NewGuid.ToString("N")
 
                             Dim MyKisiKodRow As DataRow = MyKisiKodTable.NewRow()
-                            MyKisiKodRow("KISI_ID") = KisiID
+                            MyKisiKodRow("KISI_GLOBALID") = KisiGUID
                             MyKisiKodRow("DAVETIYE_TEBLIG_DURUMU") = _Kisi.Kod.DavetiyeTebligDurumu
                             MyKisiKodRow("DAVETIYE_ALINMA_DURUMU") = _Kisi.Kod.DavetiyeAlinmaDurumu
                             MyKisiKodRow("GORUSME_DURUMU") = _Kisi.Kod.GorusmeDurumu
@@ -338,10 +370,9 @@ Public Class Create
 
                             If Not IsNothing(_Kisi.Varisler) Then
 
-
                                 For Each Varis As Kisi In _Kisi.Varisler
-                                    Dim VarisID As Integer = GetMalikID(Varis, MyKisiTable)
-                                    If VarisID = 0 Then
+                                    Dim VarisGUID As String = GetMalikGUID(Varis, MyKisiTable)
+                                    If VarisGUID = "" Then
                                         Dim MyVarisKisiRow As DataRow = MyKisiTable.NewRow()
                                         MyVarisKisiRow("ADI") = Varis.Adi
                                         MyVarisKisiRow("SOYADI") = Varis.Soyadi
@@ -352,12 +383,14 @@ Public Class Create
                                         MyVarisKisiRow("DURUMU") = Varis.Durumu
                                         MyKisiTable.Rows.Add(MyVarisKisiRow)
 
-                                        Dim MyVarisInfo As System.Reflection.FieldInfo = MyVarisKisiRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
-                                        Dim NewVarisID As Integer = CInt(MyVarisInfo.GetValue(MyVarisKisiRow))
-                                        VarisID = NewVarisID
+                                        'Dim MyVarisInfo As System.Reflection.FieldInfo = MyVarisKisiRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                                        'Dim NewVarisID As Integer = CInt(MyVarisInfo.GetValue(MyVarisKisiRow))
+                                        'VarisID = NewVarisID
+
+                                        VarisGUID = Guid.NewGuid.ToString("N")
 
                                         Dim MyVarisKisiKodRow As DataRow = MyKisiKodTable.NewRow()
-                                        MyVarisKisiKodRow("KISI_ID") = VarisID
+                                        MyVarisKisiKodRow("KISI_GLOBALID") = VarisGUID
                                         MyVarisKisiKodRow("DAVETIYE_TEBLIG_DURUMU") = Varis.Kod.DavetiyeTebligDurumu
                                         MyVarisKisiKodRow("DAVETIYE_ALINMA_DURUMU") = Varis.Kod.DavetiyeAlinmaDurumu
                                         MyVarisKisiKodRow("GORUSME_DURUMU") = Varis.Kod.GorusmeDurumu
@@ -372,8 +405,9 @@ Public Class Create
                                     End If
 
                                     Dim MyVarisRow As DataRow = MyMirasTable.NewRow()
-                                    MyVarisRow("MURIS") = KisiID
-                                    MyVarisRow("VARIS") = VarisID
+
+                                    MyVarisRow("MURIS_GLOBALID") = KisiGUID
+                                    MyVarisRow("VARIS_GLOBALID") = VarisGUID
                                     MyMirasTable.Rows.Add(MyVarisRow)
                                 Next
                             End If
@@ -381,8 +415,8 @@ Public Class Create
                         End If
 
                         Dim MyMulkiyetRow As DataRow = MyMulkiyetTable.NewRow()
-                        MyMulkiyetRow("PARSEL_ID") = NewParselID
-                        MyMulkiyetRow("KISI_ID") = KisiID
+                        MyMulkiyetRow("PARSEL_GLOBALID") = NewParselGUID
+                        MyMulkiyetRow("KISI_GLOBALID") = KisiGUID
                         MyMulkiyetRow("PAY") = _Kisi.HissePay
                         MyMulkiyetRow("PAYDA") = _Kisi.HissePayda
                         If _Kisi.TapuTarihi.Year > 1000 And _Kisi.TapuTarihi.Year < 2050 Then
@@ -397,8 +431,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyParselCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyParselCommandBuilder.DataAdapter = MyParselDataAdapter
+                Dim MyParselCommandBuilder As New OleDb.OleDbCommandBuilder With {
+                    .DataAdapter = MyParselDataAdapter
+                }
                 MyParselDataAdapter.Update(MyParselTable)
                 MyParselTable = Nothing
                 MyParselCommandBuilder = Nothing
@@ -408,8 +443,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyParselKodCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyParselKodCommandBuilder.DataAdapter = MyParselKodDataAdapter
+                Dim MyParselKodCommandBuilder As New OleDb.OleDbCommandBuilder With {
+                    .DataAdapter = MyParselKodDataAdapter
+                }
                 MyParselKodDataAdapter.Update(MyParselKodTable)
                 MyParselKodTable = Nothing
                 MyParselKodCommandBuilder = Nothing
@@ -419,8 +455,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyKamuCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyKamuCommandBuilder.DataAdapter = MyKamuDataAdapter
+                Dim MyKamuCommandBuilder As New OleDb.OleDbCommandBuilder With {
+                    .DataAdapter = MyKamuDataAdapter
+                }
                 MyKamuDataAdapter.Update(MyKamuTable)
                 MyKamuTable = Nothing
                 MyKamuCommandBuilder = Nothing
@@ -430,8 +467,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyKisiCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyKisiCommandBuilder.DataAdapter = MyKisiDataAdapter
+                Dim MyKisiCommandBuilder As New OleDb.OleDbCommandBuilder With {
+                    .DataAdapter = MyKisiDataAdapter
+                }
                 MyKisiDataAdapter.Update(MyKisiTable)
                 MyKisiTable = Nothing
                 MyKisiCommandBuilder = Nothing
@@ -441,8 +479,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyKisiKodCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyKisiKodCommandBuilder.DataAdapter = MyKisiKodDataAdapter
+                Dim MyKisiKodCommandBuilder As New OleDb.OleDbCommandBuilder With {
+                    .DataAdapter = MyKisiKodDataAdapter
+                }
                 MyKisiKodDataAdapter.Update(MyKisiKodTable)
                 MyKisiKodTable = Nothing
                 MyKisiKodCommandBuilder = Nothing
@@ -452,8 +491,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyMulkiyetCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyMulkiyetCommandBuilder.DataAdapter = MyMulkiyetDataAdapter
+                Dim MyMulkiyetCommandBuilder As New OleDb.OleDbCommandBuilder With {
+                    .DataAdapter = MyMulkiyetDataAdapter
+                }
                 MyMulkiyetDataAdapter.Update(MyMulkiyetTable)
                 MyMulkiyetTable = Nothing
                 MyMulkiyetCommandBuilder = Nothing
@@ -463,8 +503,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyMirasCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyMirasCommandBuilder.DataAdapter = MyMirasDataAdapter
+                Dim MyMirasCommandBuilder As New OleDb.OleDbCommandBuilder With {
+                    .DataAdapter = MyMirasDataAdapter
+                }
                 MyMirasDataAdapter.Update(MyMirasTable)
                 MyMirasTable = Nothing
                 MyMirasCommandBuilder = Nothing
@@ -525,8 +566,21 @@ Public Class Create
                     MyParselRow("KOD") = _Parsel.Kod.Kod
                     MyParselRow("IL") = _Parsel.Il
                     MyParselRow("ILCE") = _Parsel.Ilce
-                    MyParselRow("KOY") = _Parsel.Koy
-                    MyParselRow("MAHALLE") = _Parsel.Mahalle
+                    Dim YeniKoyMahalleAd As String
+                    If Trim(_Parsel.Mahalle) = "" Then
+                        YeniKoyMahalleAd = _Parsel.Koy
+                        If Trim(_Parsel.Koy) = "" Then
+                            YeniKoyMahalleAd = "-"
+                        End If
+                    Else
+                        If Trim(_Parsel.Koy) = "" Then
+                            YeniKoyMahalleAd = _Parsel.Mahalle
+                        Else
+                            YeniKoyMahalleAd = _Parsel.Koy + "-" + _Parsel.Mahalle
+                        End If
+                    End If
+                    'MyParselRow("KOY") = _Parsel.Koy
+                    MyParselRow("MAHALLE") = YeniKoyMahalleAd
                     MyParselRow("ADA") = _Parsel.AdaNo
                     MyParselRow("PARSEL") = _Parsel.ParselNo
                     MyParselRow("PAFTA") = _Parsel.PaftaNo
@@ -614,8 +668,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyParselCommandBuilder As New SqlCommandBuilder
-                MyParselCommandBuilder.DataAdapter = MyParselDataAdapter
+                Dim MyParselCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyParselDataAdapter
+                }
                 MyParselDataAdapter.Update(MyParselTable)
                 MyParselTable = Nothing
                 MyParselCommandBuilder = Nothing
@@ -625,8 +680,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyParselKodCommandBuilder As New SqlCommandBuilder
-                MyParselKodCommandBuilder.DataAdapter = MyParselKodDataAdapter
+                Dim MyParselKodCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyParselKodDataAdapter
+                }
                 MyParselKodDataAdapter.Update(MyParselKodTable)
                 MyParselKodTable = Nothing
                 MyParselKodCommandBuilder = Nothing
@@ -636,8 +692,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyKamuCommandBuilder As New SqlCommandBuilder
-                MyKamuCommandBuilder.DataAdapter = MyKamuDataAdapter
+                Dim MyKamuCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyKamuDataAdapter
+                }
                 MyKamuDataAdapter.Update(MyKamuTable)
                 MyKamuTable = Nothing
                 MyKamuCommandBuilder = Nothing
@@ -647,8 +704,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyKisiCommandBuilder As New SqlCommandBuilder
-                MyKisiCommandBuilder.DataAdapter = MyKisiDataAdapter
+                Dim MyKisiCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyKisiDataAdapter
+                }
                 MyKisiDataAdapter.Update(MyKisiTable)
                 MyKisiTable = Nothing
                 MyKisiCommandBuilder = Nothing
@@ -658,8 +716,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyKisiKodCommandBuilder As New SqlCommandBuilder
-                MyKisiKodCommandBuilder.DataAdapter = MyKisiKodDataAdapter
+                Dim MyKisiKodCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyKisiKodDataAdapter
+                }
                 MyKisiKodDataAdapter.Update(MyKisiKodTable)
                 MyKisiKodTable = Nothing
                 MyKisiKodCommandBuilder = Nothing
@@ -669,8 +728,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyMulkiyetCommandBuilder As New SqlCommandBuilder
-                MyMulkiyetCommandBuilder.DataAdapter = MyMulkiyetDataAdapter
+                Dim MyMulkiyetCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyMulkiyetDataAdapter
+                }
                 MyMulkiyetDataAdapter.Update(MyMulkiyetTable)
                 MyMulkiyetTable = Nothing
                 MyMulkiyetCommandBuilder = Nothing
@@ -690,84 +750,47 @@ Public Class Create
 
     Private Function UpdateDataOleDb(MustemilatCollection As Collection, MevsimlikCollection As Collection, _ConnectionString As String) As Boolean
         Dim MyStatus As Boolean = False
-        Try
-            Dim MyKamuConnection As New OleDb.OleDbConnection(_ConnectionString)
-            MyKamuConnection.Open()
-
-            Dim MyQueryStringMustemilat As String = "SELECT * FROM MUSTEMILAT"
-            Dim MyMustemilatDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringMustemilat, MyKamuConnection))
-            Dim MyMustemilatTable As New DataTable
-            MyMustemilatDataAdapter.Fill(MyMustemilatTable)
-
-            Dim MyQueryStringMevsimlik As String = "SELECT * FROM MEVSIMLIK"
-            Dim MyMevsimlikDataAdapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter(New OleDb.OleDbCommand(MyQueryStringMevsimlik, MyKamuConnection))
-            Dim MyMevsimlikTable As New DataTable
-            MyMevsimlikDataAdapter.Fill(MyMevsimlikTable)
-
+        Using MyKamuConnection As New OleDbConnection(_ConnectionString)
             Try
-                For Each _Mustemilat As Mustemilat In MustemilatCollection
-                    Dim MyMustemilatRow As DataRow = MyMustemilatTable.NewRow()
-                    MyMustemilatRow("PARSEL_ID") = _Mustemilat.ParselID
-                    MyMustemilatRow("SAHIP_ID") = _Mustemilat.SahipID
-                    MyMustemilatRow("TANIM") = _Mustemilat.Tanim
-                    MyMustemilatRow("ADET") = _Mustemilat.Adet
-                    MyMustemilatRow("FIYAT") = _Mustemilat.Fiyat
-                    MyMustemilatRow("MALIK") = _Mustemilat.Malik
-                    MyMustemilatRow("PAY") = _Mustemilat.Pay
-                    MyMustemilatRow("PAYDA") = _Mustemilat.Payda
-                    MyMustemilatRow("ODEME_ID") = _Mustemilat.OdemeID
-                    MyMustemilatTable.Rows.Add(MyMustemilatRow)
-                Next
+                If Not MyKamuConnection.State = ConnectionState.Open Then
+                    MyKamuConnection.Open()
+                End If
+
+                Using MyMustemilatDataAdapter As OleDbDataAdapter = New OleDbDataAdapter(New OleDbCommand("SELECT * FROM MUSTEMILAT", MyKamuConnection))
+                    Using MyMustemilatTable As New DataTable
+                        Try
+                            MyMustemilatDataAdapter.Fill(MyMustemilatTable)
+                            UpdateMustemilatTable(MustemilatCollection, MyMustemilatTable)
+                            Using MyMustemilatCommandBuilder As New OleDb.OleDbCommandBuilder With {.DataAdapter = MyMustemilatDataAdapter}
+                                MyMustemilatDataAdapter.Update(MyMustemilatTable)
+                            End Using
+                        Catch ex As Exception
+                            MsgBox(ex.Message)
+                        End Try
+                    End Using
+                End Using
+
+                Using MyMevsimlikDataAdapter As OleDbDataAdapter = New OleDbDataAdapter(New OleDbCommand("SELECT * FROM MEVSIMLIK", MyKamuConnection))
+                    Using MyMevsimlikTable As New DataTable
+                        Try
+                            MyMevsimlikDataAdapter.Fill(MyMevsimlikTable)
+                            UpdateMevsimlikTable(MevsimlikCollection, MyMevsimlikTable)
+                            Using MyMevsimlikCommandBuilder As New OleDbCommandBuilder With {.DataAdapter = MyMevsimlikDataAdapter}
+                                MyMevsimlikDataAdapter.Update(MyMevsimlikTable)
+                            End Using
+                        Catch ex As Exception
+                            MsgBox(ex.Message)
+                        End Try
+                    End Using
+                End Using
+
+                MyStatus = True
             Catch ex As Exception
                 MsgBox(ex.Message)
+            Finally
+                MyKamuConnection.Close()
             End Try
-
-            Try
-                For Each _Mevsimlik As Mevsimlik In MevsimlikCollection
-                    Dim MyMevsimlikRow As DataRow = MyMevsimlikTable.NewRow()
-                    MyMevsimlikRow("PARSEL_ID") = _Mevsimlik.ParselID
-                    MyMevsimlikRow("SAHIP_ID") = _Mevsimlik.SahipID
-                    MyMevsimlikRow("TANIM") = _Mevsimlik.Tanim
-                    MyMevsimlikRow("ALAN") = _Mevsimlik.Alan
-                    MyMevsimlikRow("BEDEL") = _Mevsimlik.Bedel
-                    MyMevsimlikRow("MALIK") = _Mevsimlik.Malik
-                    MyMevsimlikRow("PAY") = _Mevsimlik.Pay
-                    MyMevsimlikRow("PAYDA") = _Mevsimlik.Payda
-                    MyMevsimlikRow("ODEME_ID") = _Mevsimlik.OdemeID
-                    MyMevsimlikTable.Rows.Add(MyMevsimlikRow)
-                Next
-            Catch ex As Exception
-                MsgBox(ex.Message)
-            End Try
-
-            Try
-                Dim MyMustemilatCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyMustemilatCommandBuilder.DataAdapter = MyMustemilatDataAdapter
-                MyMustemilatDataAdapter.Update(MyMustemilatTable)
-                MyMustemilatTable = Nothing
-                MyMustemilatCommandBuilder = Nothing
-                MyMustemilatDataAdapter = Nothing
-            Catch ex As Exception
-                MsgBox(ex.Message)
-            End Try
-
-            Try
-                Dim MyMevsimlikCommandBuilder As New OleDb.OleDbCommandBuilder
-                MyMevsimlikCommandBuilder.DataAdapter = MyMevsimlikDataAdapter
-                MyMevsimlikDataAdapter.Update(MyMevsimlikTable)
-                MyMevsimlikTable = Nothing
-                MyMevsimlikCommandBuilder = Nothing
-                MyMevsimlikDataAdapter = Nothing
-            Catch ex As Exception
-                MsgBox(ex.Message)
-            End Try
-
-            MyKamuConnection.Close()
-            MyKamuConnection = Nothing
-            MyStatus = True
-        Catch ex As Exception
-            MsgBox(ex.Message)
-        End Try
+        End Using
         Return MyStatus
     End Function
 
@@ -787,45 +810,50 @@ Public Class Create
             Dim MyMevsimlikTable As New DataTable
             MyMevsimlikDataAdapter.Fill(MyMevsimlikTable)
 
-            Try
-                For Each _Mustemilat As Mustemilat In MustemilatCollection
-                    Dim MyMustemilatRow As DataRow = MyMustemilatTable.NewRow()
-                    MyMustemilatRow("PARSEL_ID") = _Mustemilat.ParselID
-                    MyMustemilatRow("SAHIP_ID") = _Mustemilat.SahipID
-                    MyMustemilatRow("TANIM") = _Mustemilat.Tanim
-                    MyMustemilatRow("ADET") = _Mustemilat.Adet
-                    MyMustemilatRow("FIYAT") = _Mustemilat.Fiyat
-                    MyMustemilatRow("MALIK") = _Mustemilat.Malik
-                    MyMustemilatRow("PAY") = _Mustemilat.Pay
-                    MyMustemilatRow("PAYDA") = _Mustemilat.Payda
-                    MyMustemilatRow("ODEME_ID") = _Mustemilat.OdemeID
-                    MyMustemilatTable.Rows.Add(MyMustemilatRow)
-                Next
-            Catch ex As Exception
-                MsgBox(ex.Message)
-            End Try
+            UpdateMustemilatTable(MustemilatCollection, MyMustemilatTable)
+
+            UpdateMevsimlikTable(MevsimlikCollection, MyMevsimlikTable)
+
+            'Try
+            '    For Each _Mustemilat As Mustemilat In MustemilatCollection
+            '        Dim MyMustemilatRow As DataRow = MyMustemilatTable.NewRow()
+            '        MyMustemilatRow("PARSEL_ID") = _Mustemilat.ParselID
+            '        MyMustemilatRow("SAHIP_ID") = _Mustemilat.SahipID
+            '        MyMustemilatRow("TANIM") = _Mustemilat.Tanim
+            '        MyMustemilatRow("ADET") = _Mustemilat.Adet
+            '        MyMustemilatRow("FIYAT") = _Mustemilat.Fiyat
+            '        MyMustemilatRow("MALIK") = _Mustemilat.Malik
+            '        MyMustemilatRow("PAY") = _Mustemilat.Pay
+            '        MyMustemilatRow("PAYDA") = _Mustemilat.Payda
+            '        MyMustemilatRow("ODEME_ID") = _Mustemilat.OdemeID
+            '        MyMustemilatTable.Rows.Add(MyMustemilatRow)
+            '    Next
+            'Catch ex As Exception
+            '    MsgBox(ex.Message)
+            'End Try
+
+            'Try
+            '    For Each _Mevsimlik As Mevsimlik In MevsimlikCollection
+            '        Dim MyMevsimlikRow As DataRow = MyMevsimlikTable.NewRow()
+            '        MyMevsimlikRow("PARSEL_ID") = _Mevsimlik.ParselID
+            '        MyMevsimlikRow("SAHIP_ID") = _Mevsimlik.SahipID
+            '        MyMevsimlikRow("TANIM") = _Mevsimlik.Tanim
+            '        MyMevsimlikRow("ALAN") = _Mevsimlik.Alan
+            '        MyMevsimlikRow("BEDEL") = _Mevsimlik.Bedel
+            '        MyMevsimlikRow("MALIK") = _Mevsimlik.Malik
+            '        MyMevsimlikRow("PAY") = _Mevsimlik.Pay
+            '        MyMevsimlikRow("PAYDA") = _Mevsimlik.Payda
+            '        MyMevsimlikRow("ODEME_ID") = _Mevsimlik.OdemeID
+            '        MyMevsimlikTable.Rows.Add(MyMevsimlikRow)
+            '    Next
+            'Catch ex As Exception
+            '    MsgBox(ex.Message)
+            'End Try
 
             Try
-                For Each _Mevsimlik As Mevsimlik In MevsimlikCollection
-                    Dim MyMevsimlikRow As DataRow = MyMevsimlikTable.NewRow()
-                    MyMevsimlikRow("PARSEL_ID") = _Mevsimlik.ParselID
-                    MyMevsimlikRow("SAHIP_ID") = _Mevsimlik.SahipID
-                    MyMevsimlikRow("TANIM") = _Mevsimlik.Tanim
-                    MyMevsimlikRow("ALAN") = _Mevsimlik.Alan
-                    MyMevsimlikRow("BEDEL") = _Mevsimlik.Bedel
-                    MyMevsimlikRow("MALIK") = _Mevsimlik.Malik
-                    MyMevsimlikRow("PAY") = _Mevsimlik.Pay
-                    MyMevsimlikRow("PAYDA") = _Mevsimlik.Payda
-                    MyMevsimlikRow("ODEME_ID") = _Mevsimlik.OdemeID
-                    MyMevsimlikTable.Rows.Add(MyMevsimlikRow)
-                Next
-            Catch ex As Exception
-                MsgBox(ex.Message)
-            End Try
-
-            Try
-                Dim MyMustemilatCommandBuilder As New SqlCommandBuilder
-                MyMustemilatCommandBuilder.DataAdapter = MyMustemilatDataAdapter
+                Dim MyMustemilatCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyMustemilatDataAdapter
+                }
                 MyMustemilatDataAdapter.Update(MyMustemilatTable)
                 MyMustemilatTable = Nothing
                 MyMustemilatCommandBuilder = Nothing
@@ -835,8 +863,9 @@ Public Class Create
             End Try
 
             Try
-                Dim MyMevsimlikCommandBuilder As New SqlCommandBuilder
-                MyMevsimlikCommandBuilder.DataAdapter = MyMevsimlikDataAdapter
+                Dim MyMevsimlikCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyMevsimlikDataAdapter
+                }
                 MyMevsimlikDataAdapter.Update(MyMevsimlikTable)
                 MyMevsimlikTable = Nothing
                 MyMevsimlikCommandBuilder = Nothing
@@ -853,6 +882,46 @@ Public Class Create
         End Try
         Return MyStatus
     End Function
+
+    Private Shared Sub UpdateMevsimlikTable(MevsimlikCollection As Collection, MyMevsimlikTable As DataTable)
+        Try
+            For Each _Mevsimlik As Mevsimlik In MevsimlikCollection
+                Dim MyMevsimlikRow As DataRow = MyMevsimlikTable.NewRow()
+                MyMevsimlikRow("PARSEL_ID") = _Mevsimlik.ParselGUID
+                MyMevsimlikRow("SAHIP_ID") = _Mevsimlik.SahipGUID
+                MyMevsimlikRow("TANIM") = _Mevsimlik.Tanim
+                MyMevsimlikRow("ALAN") = _Mevsimlik.Alan
+                MyMevsimlikRow("BEDEL") = _Mevsimlik.Bedel
+                MyMevsimlikRow("MALIK") = _Mevsimlik.Malik
+                MyMevsimlikRow("PAY") = _Mevsimlik.Pay
+                MyMevsimlikRow("PAYDA") = _Mevsimlik.Payda
+                MyMevsimlikRow("ODEME_GLOBALID") = _Mevsimlik.OdemeGUID
+                MyMevsimlikTable.Rows.Add(MyMevsimlikRow)
+            Next
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+    End Sub
+
+    Private Shared Sub UpdateMustemilatTable(MustemilatCollection As Collection, MyMustemilatTable As DataTable)
+        Try
+            For Each _Mustemilat As Mustemilat In MustemilatCollection
+                Dim MyMustemilatRow As DataRow = MyMustemilatTable.NewRow()
+                MyMustemilatRow("PARSEL_GLOBALID") = _Mustemilat.ParselGUID
+                MyMustemilatRow("SAHIP_GLOBALID") = _Mustemilat.SahipGUID
+                MyMustemilatRow("TANIM") = _Mustemilat.Tanim
+                MyMustemilatRow("ADET") = _Mustemilat.Adet
+                MyMustemilatRow("FIYAT") = _Mustemilat.Fiyat
+                MyMustemilatRow("MALIK") = _Mustemilat.Malik
+                MyMustemilatRow("PAY") = _Mustemilat.Pay
+                MyMustemilatRow("PAYDA") = _Mustemilat.Payda
+                MyMustemilatRow("ODEME_GLOBALID") = _Mustemilat.OdemeGUID
+                MyMustemilatTable.Rows.Add(MyMustemilatRow)
+            Next
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+    End Sub
 
     Private Function GetMalikID(_Kisi As Kisi, Kisiler As DataTable) As Long
         Dim MyKisiID As Long = 0
@@ -885,5 +954,39 @@ Public Class Create
         Next
         Return MyKisiID
     End Function
+
+    Private Function GetMalikGUID(_Kisi As Kisi, Kisiler As DataTable) As String
+        Dim MyKisiGUID As String = ""
+        For Each MyRow As DataRow In Kisiler.Rows
+            Dim SorguKisi As New Kisi(MyRow("ADI").ToString, MyRow("SOYADI").ToString, MyRow("BABA").ToString)
+            If Not IsDBNull(MyRow("TC_KIMLIK_NO")) Then
+                SorguKisi.TCKimlikNo = MyRow("TC_KIMLIK_NO")
+            End If
+            If SorguKisi.Equals(_Kisi) Then
+                If Not IsDBNull(MyRow("GLOBALID")) Then
+                    MyKisiGUID = MyRow("GLOBALID").ToString
+                Else
+                    'Dim MyKisiInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                    'MyKisiID = CInt(MyKisiInfo.GetValue(MyRow))
+                    MyKisiGUID = Guid.NewGuid.ToString("N")
+                End If
+
+
+                'Dim MyKisiInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                'MyKisiID = CInt(MyKisiInfo.GetValue(MyRow))
+
+                'Dim MyKisiRowID As Long
+                'If Not IsDBNull(MyRow("ID")) Then
+                '    MyKisiRowID = MyRow("ID")
+                'End If
+                'If (MyKisiID <> MyKisiRowID) And (MyKisiRowID > 0) Then
+                '    MyKisiID = MyKisiRowID
+                'End If
+                Exit For
+            End If
+        Next
+        Return MyKisiGUID
+    End Function
+
 
 End Class

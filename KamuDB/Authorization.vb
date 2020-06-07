@@ -1,5 +1,141 @@
 ﻿Public Class Authorization
 
+    Public Enum UserGroup
+        None = 0
+        Users = 1
+        Administrators = 2
+    End Enum
+
+    Public Sub New(_UserGroup As UserGroup)
+        Select Case _UserGroup
+            Case 0
+                _ParselRead = False
+                _ParselWrite = False
+                _KisiRead = False
+                _KisiWrite = False
+                _DavaRead = False
+                _DavaWrite = False
+                _MustemilatRead = False
+                _MustemilatWrite = False
+                _MevsimlikRead = False
+                _MevsimlikWrite = False
+                _ProjeRead = False
+                _ProjeWrite = False
+                _KamuRead = False
+                _KamuWrite = False
+                _OdemeRead = False
+                _OdemeWrite = False
+                _MalikSurecRead = False
+                _MalikSurecWrite = False
+                _ParselSurecRead = False
+                _ParselSurecWrite = False
+                _CanImport = False
+                _CanExport = False
+                _BasitAnaliz = False
+                _GelismisAnaliz = False
+                _OdemeEmri = False
+                _TakpasSorgu = False
+                _LogView = False
+                _ManageUsers = False
+            Case 1
+                _ParselRead = True
+                _ParselWrite = False
+                _KisiRead = True
+                _KisiWrite = False
+                _DavaRead = True
+                _DavaWrite = False
+                _MustemilatRead = True
+                _MustemilatWrite = False
+                _MevsimlikRead = True
+                _MevsimlikWrite = False
+                _ProjeRead = True
+                _ProjeWrite = False
+                _KamuRead = True
+                _KamuWrite = False
+                _OdemeRead = True
+                _OdemeWrite = False
+                _MalikSurecRead = True
+                _MalikSurecWrite = False
+                _ParselSurecRead = True
+                _ParselSurecWrite = False
+                _CanImport = False
+                _CanExport = True
+                _BasitAnaliz = True
+                _GelismisAnaliz = True
+                _OdemeEmri = False
+                _TakpasSorgu = True
+                _LogView = False
+                _ManageUsers = False
+            Case 2
+                _ParselRead = True
+                _ParselWrite = True
+                _KisiRead = True
+                _KisiWrite = True
+                _DavaRead = True
+                _DavaWrite = True
+                _MustemilatRead = True
+                _MustemilatWrite = True
+                _MevsimlikRead = True
+                _MevsimlikWrite = True
+                _ProjeRead = True
+                _ProjeWrite = True
+                _KamuRead = True
+                _KamuWrite = True
+                _OdemeRead = True
+                _OdemeWrite = True
+                _MalikSurecRead = True
+                _MalikSurecWrite = True
+                _ParselSurecRead = True
+                _ParselSurecWrite = True
+                _CanImport = True
+                _CanExport = True
+                _BasitAnaliz = True
+                _GelismisAnaliz = True
+                _OdemeEmri = True
+                _TakpasSorgu = True
+                _LogView = True
+                _ManageUsers = True
+            Case Else
+
+        End Select
+    End Sub
+
+    Public Sub New()
+
+    End Sub
+
+    Public Sub New(parselRead As Boolean, parselWrite As Boolean, kisiRead As Boolean, kisiWrite As Boolean, davaRead As Boolean, davaWrite As Boolean, mustemilatRead As Boolean, mustemilatWrite As Boolean, mevsimlikRead As Boolean, mevsimlikWrite As Boolean, projeRead As Boolean, projeWrite As Boolean, kamuRead As Boolean, kamuWrite As Boolean, odemeRead As Boolean, odemeWrite As Boolean, malikSurecRead As Boolean, malikSurecWrite As Boolean, parselSurecRead As Boolean, parselSurecWrite As Boolean, canImport As Boolean, canExport As Boolean, basitAnaliz As Boolean, gelismisAnaliz As Boolean, odemeEmri As Boolean, bolgeID As Long, takpasSorgu As Boolean, logView As Boolean, manageUsers As Boolean)
+        _ParselRead = parselRead
+        _ParselWrite = parselWrite
+        _KisiRead = kisiRead
+        _KisiWrite = kisiWrite
+        _DavaRead = davaRead
+        _DavaWrite = davaWrite
+        _MustemilatRead = mustemilatRead
+        _MustemilatWrite = mustemilatWrite
+        _MevsimlikRead = mevsimlikRead
+        _MevsimlikWrite = mevsimlikWrite
+        _ProjeRead = projeRead
+        _ProjeWrite = projeWrite
+        _KamuRead = kamuRead
+        _KamuWrite = kamuWrite
+        _OdemeRead = odemeRead
+        _OdemeWrite = odemeWrite
+        _MalikSurecRead = malikSurecRead
+        _MalikSurecWrite = malikSurecWrite
+        _ParselSurecRead = parselSurecRead
+        _ParselSurecWrite = parselSurecWrite
+        _CanImport = canImport
+        _CanExport = canExport
+        _BasitAnaliz = basitAnaliz
+        _GelismisAnaliz = gelismisAnaliz
+        _OdemeEmri = odemeEmri
+        _BolgeID = bolgeID
+        _TakpasSorgu = takpasSorgu
+        _LogView = logView
+        _ManageUsers = manageUsers
+    End Sub
+
     Private _ParselRead As Boolean
     Public Property ParselRead() As Boolean
         Get
@@ -289,4 +425,5 @@
             _ManageUsers = value
         End Set
     End Property
+
 End Class

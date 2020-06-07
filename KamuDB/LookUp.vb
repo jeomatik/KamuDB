@@ -1,7 +1,7 @@
 ﻿
 Friend Class LookupObject
-    Private _ID As Long
-    Private _Name As String
+    Private ReadOnly _ID As Long
+    Private ReadOnly _Name As String
 
     Public Sub New(ByVal lngID As Long, ByVal strName As String)
         Me._ID = lngID

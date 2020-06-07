@@ -6,7 +6,6 @@ Public Class SQL
     Public MyLogConnectionInfo As New ConnectionInfo
 
     Sub New()
-
     End Sub
 
     Sub New(ByVal _Connection As ConnectionInfo)
@@ -14,99 +13,132 @@ Public Class SQL
     End Sub
 
     Public Function GetDataTable(ByVal _SQLCommand As String) As DataTable
-        Dim MyTable As New DataTable
-        MyTable.Locale = System.Globalization.CultureInfo.InvariantCulture
-        Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
-            Try
-                Dim command As SqlClient.SqlCommand = connection.CreateCommand()
-                command.CommandText = _SQLCommand
-                If Not connection.State = ConnectionState.Open Then connection.Open()
-
-                Dim adapter As New SqlClient.SqlDataAdapter
-                adapter.SelectCommand = command
-
-                adapter.Fill(MyTable)
-
-                adapter = Nothing
-                command = Nothing
-            Catch ex As Exception
-
-            End Try
+        Using table As New DataTable With {.Locale = Globalization.CultureInfo.InvariantCulture}
+            Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
+                Using command As SqlCommand = connection.CreateCommand()
+                    Try
+                        command.CommandText = _SQLCommand
+                        If Not connection.State = ConnectionState.Open Then
+                            connection.Open()
+                        End If
+                        Using adapter As New SqlDataAdapter With {.SelectCommand = command}
+                            Dim unused As Integer = adapter.Fill(table)
+                        End Using
+                    Catch ex As Exception
+                        MsgBox(ex.Message)
+                    Finally
+                        connection.Close()
+                    End Try
+                End Using
+            End Using
+            Return table
         End Using
-        Return MyTable
     End Function
 
     Private Function FillProjectTable(MyQueryString As String, Connection As SqlConnection, _Project As Proje) As Long
         Dim MyRowID As Long = -1
         Try
-            Dim MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryString, Connection))
-            Dim MyTable As New DataTable
-            MyDataAdapter.Fill(MyTable)
+            Using MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryString, Connection))
+                Using MyTable As New DataTable
+                    MyDataAdapter.Fill(MyTable)
 
-            Dim MyRow As DataRow = MyTable.NewRow()
-            MyRow("KOD") = _Project.Kod
-            MyRow("AD") = _Project.Ad
-            MyRow("PROJE_NOTLARI") = _Project.ProjeNotlari
-            MyTable.Rows.Add(MyRow)
+                    Dim MyRow As DataRow = MyTable.NewRow()
+                    MyRow("GLOBALID") = _Project.GUID
+                    MyRow("KOD") = _Project.Kod
+                    MyRow("AD") = _Project.Ad
+                    MyRow("PROJE_NOTLARI") = _Project.ProjeNotlari
+                    MyTable.Rows.Add(MyRow)
+                    MyRow = Nothing
 
-            'Kayıt anında ID alma
-            Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
-            MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
+                    'Kayıt anında ID alma
+                    'Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
+                    'MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
 
-            MyRow = Nothing
-
-            Dim MyCommandBuilder As New SqlCommandBuilder
-            MyCommandBuilder.DataAdapter = MyDataAdapter
-            MyDataAdapter.Update(MyTable)
-
-            MyCommandBuilder = Nothing
-            MyTable = Nothing
-            MyDataAdapter = Nothing
+                    Using MyCommandBuilder As New SqlCommandBuilder With {.DataAdapter = MyDataAdapter}
+                        MyDataAdapter.Update(MyTable)
+                    End Using
+                End Using
+            End Using
         Catch ex As Exception
             MyRowID = -1
         End Try
         Return MyRowID
     End Function
 
-    Private Sub FillTipMalikTable(_QueryString As String, _Connection As SqlConnection, _KamuVeriXMLFileName As String)
-        Dim MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(_QueryString, _Connection))
-        Dim MyTable As New DataTable
-        MyDataAdapter.Fill(MyTable)
+    Private Sub FillKodTable(_QueryString As String, _TableName As String, _ColumnName As String, _Connection As SqlConnection, _KamuVeriXMLFileName As String)
+        Try
+            Using MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(_QueryString, _Connection))
+                Using MyTable As New DataTable
+                    MyDataAdapter.Fill(MyTable)
 
-        Dim KamuVeri As New DataSet
-        KamuVeri.ReadXml(_KamuVeriXMLFileName)
-        Dim KamuTable As DataTable = KamuVeri.Tables("TIP_MALIK")
-        For Each MyTipRow As DataRow In KamuTable.Rows
-            Dim MyRow As DataRow = MyTable.NewRow()
-            MyRow("ID") = Val(MyTipRow("ID"))
-            MyRow("TIP") = MyTipRow("TIP").ToString
-            MyTable.Rows.Add(MyRow)
-            MyRow = Nothing
-        Next
+                    Using KamuVeri As New DataSet
+                        KamuVeri.ReadXml(_KamuVeriXMLFileName)
+                        Using KamuTable As DataTable = KamuVeri.Tables(_TableName)
+                            For Each MyTipRow As DataRow In KamuTable.Rows
+                                Dim MyRow As DataRow = MyTable.NewRow()
+                                MyRow("ID") = Val(MyTipRow("ID"))
+                                MyRow("LISTE_ID") = Val(MyTipRow("LISTE_ID"))
+                                MyRow("KOD_ID") = Val(MyTipRow("KOD_ID"))
+                                MyRow(_ColumnName) = MyTipRow(_ColumnName).ToString
+                                MyTable.Rows.Add(MyRow)
+                                MyRow = Nothing
+                            Next
 
-        Dim MyCommandBuilder As New SqlCommandBuilder
-        MyCommandBuilder.DataAdapter = MyDataAdapter
-        MyDataAdapter.Update(MyTable)
-
-        MyCommandBuilder = Nothing
-        KamuTable = Nothing
-        KamuVeri = Nothing
-        MyTable = Nothing
-        MyDataAdapter = Nothing
+                            Using MyCommandBuilder As New SqlCommandBuilder
+                                MyCommandBuilder.DataAdapter = MyDataAdapter
+                                MyDataAdapter.Update(MyTable)
+                            End Using
+                        End Using
+                    End Using
+                End Using
+            End Using
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
     End Sub
 
+    Private Sub FillListeTable(_QueryString As String, _TableName As String, _ColumnName As String, _Connection As SqlConnection, _KamuVeriXMLFileName As String)
+        Try
+            Using MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(_QueryString, _Connection))
+                Using MyTable As New DataTable
+                    MyDataAdapter.Fill(MyTable)
+
+                    Using KamuVeri As New DataSet
+                        KamuVeri.ReadXml(_KamuVeriXMLFileName)
+                        Using KamuTable As DataTable = KamuVeri.Tables(_TableName)
+                            For Each MyTipRow As DataRow In KamuTable.Rows
+                                Dim MyRow As DataRow = MyTable.NewRow()
+                                MyRow("ID") = Val(MyTipRow("ID"))
+                                MyRow(_ColumnName) = MyTipRow(_ColumnName).ToString
+                                MyTable.Rows.Add(MyRow)
+                                MyRow = Nothing
+                            Next
+
+                            Using MyCommandBuilder As New SqlCommandBuilder
+                                MyCommandBuilder.DataAdapter = MyDataAdapter
+                                MyDataAdapter.Update(MyTable)
+                            End Using
+                        End Using
+                    End Using
+                End Using
+            End Using
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+    End Sub
     Public Function CreateProjectList() As Collection
         Dim MyProjectList As New Collection()
         Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
             Try
-                Dim command As New SqlCommand("SELECT ID, AD FROM PROJE ORDER BY ID", connection)
+                Dim command As New SqlCommand("SELECT GLOBALID, AD FROM PROJE ORDER BY GLOBALID", connection)
                 If Not connection.State = ConnectionState.Open Then connection.Open()
-                Dim reader As SqlDataReader = command.ExecuteReader()
-                While reader.Read()
-                    MyProjectList.Add(New Proje(CLng(reader("ID")), reader("AD").ToString))
-                End While
+                Using reader As SqlDataReader = command.ExecuteReader()
+                    While reader.Read()
+                        MyProjectList.Add(New Proje(reader("GLOBALID"), reader("AD").ToString))
+                    End While
 
-                reader.Close()
+                    reader.Close()
+                End Using
             Catch ex As Exception
                 Return Nothing
             End Try
@@ -165,12 +197,12 @@ Public Class SQL
                 Dim adapter As SqlDataAdapter = New SqlDataAdapter()
                 adapter.SelectCommand = command
 
-                Dim table As New DataTable
-                table.Locale = System.Globalization.CultureInfo.InvariantCulture
-                adapter.Fill(table)
-                adapter = Nothing
+                Using table As New DataTable
+                    table.Locale = System.Globalization.CultureInfo.InvariantCulture
+                    adapter.Fill(table)
+                    adapter = Nothing
 
-                table = Nothing
+                End Using
                 MyStatus = True
             Catch ex As Exception
                 MyStatus = False
@@ -190,7 +222,7 @@ Public Class SQL
                 If Not connection.State = ConnectionState.Open Then connection.Open()
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
-                    MyProje.ID = dataReader("ID")
+                    MyProje.GUID = dataReader("GLOBALID")
                     MyProje.Kod = dataReader("KOD").ToString
                     MyProje.Ad = dataReader("AD").ToString
                     MyProje.ProjeNotlari = dataReader("PROJE_NOTLARI").ToString
@@ -209,16 +241,16 @@ Public Class SQL
         Return MyProje
     End Function
 
-    Public Function GetProje(ProjeID As Long) As Proje
+    Public Function GetProje(ProjeGUID As String) As Proje
         Dim MyProje As New Proje
         Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
             Try
                 Dim command As SqlCommand = connection.CreateCommand()
-                command.CommandText = "SELECT * FROM PROJE WHERE ID=" & ProjeID.ToString
+                command.CommandText = "SELECT * FROM PROJE WHERE GLOBALID=" & ProjeGUID.ToString
                 If Not connection.State = ConnectionState.Open Then connection.Open()
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
-                    MyProje.ID = ProjeID
+                    MyProje.GUID = ProjeGUID
                     MyProje.Kod = dataReader("KOD").ToString
                     MyProje.Ad = dataReader("AD").ToString
                     MyProje.ProjeNotlari = dataReader("PROJE_NOTLARI").ToString
@@ -399,12 +431,151 @@ Public Class SQL
         Return MyParsel
     End Function
 
+    Public Function GetParsel(ParselGUID As String) As Parsel
+        Dim MyParsel As New Parsel
+        Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
+            Try
+                Dim command As SqlCommand = connection.CreateCommand()
+                command.CommandText = "SELECT * FROM PARSEL WHERE GLOBALID=" & ParselGUID
+                If Not connection.State = ConnectionState.Open Then connection.Open()
+                Dim dataReader As SqlDataReader = command.ExecuteReader()
+                Do While dataReader.Read()
+                    MyParsel.GUID = ParselGUID
+                    MyParsel.ProjeGUID = dataReader("PROJE_GLOBALID").ToString
+                    MyParsel.Code = dataReader("KOD").ToString
+                    MyParsel.Il = dataReader("IL").ToString
+                    MyParsel.Ilce = dataReader("ILCE").ToString
+                    MyParsel.Koy = dataReader("KOY").ToString
+                    MyParsel.Mahalle = dataReader("MAHALLE").ToString
+                    MyParsel.AdaNo = dataReader("ADA").ToString
+                    MyParsel.ParselNo = dataReader("PARSEL").ToString
+                    MyParsel.PaftaNo = dataReader("PAFTA").ToString
+                    MyParsel.Mevki = dataReader("MEVKI").ToString
+                    MyParsel.Cilt = dataReader("CILT").ToString
+                    MyParsel.Sayfa = dataReader("SAYFA").ToString
+                    MyParsel.Cinsi = dataReader("CINSI").ToString
+                    If Not IsDBNull(dataReader("TAPU_ALANI")) Then
+                        MyParsel.TapuAlani = dataReader("TAPU_ALANI")
+                    End If
+                Loop
+                dataReader.Close()
+                dataReader = Nothing
+                command = Nothing
+            Catch ex As Exception
+                'MyParsel = Nothing
+            End Try
+
+            Try
+                Dim commandk As SqlCommand = connection.CreateCommand()
+                commandk.CommandText = "SELECT * FROM KAMULASTIRMA WHERE PARSEL_GLOBALID=" & ParselGUID
+                Dim dataReaderk As SqlDataReader = commandk.ExecuteReader()
+                Do While dataReaderk.Read()
+                    MyParsel.KamuID = dataReaderk("ID")
+                    If Not IsDBNull(dataReaderk("MULKIYET_ALAN")) Then
+                        MyParsel.MulkiyetAlan = dataReaderk("MULKIYET_ALAN")
+                    End If
+                    If Not IsDBNull(dataReaderk("IRTIFAK_ALAN")) Then
+                        MyParsel.IrtifakAlan = dataReaderk("IRTIFAK_ALAN").ToString
+                    End If
+                    If Not IsDBNull(dataReaderk("GECICI_IRTIFAK_ALAN")) Then
+                        MyParsel.GeciciIrtifakAlan = dataReaderk("GECICI_IRTIFAK_ALAN").ToString
+                    End If
+                    If Not IsDBNull(dataReaderk("MULKIYET_BEDEL")) Then
+                        MyParsel.MulkiyetBedel = dataReaderk("MULKIYET_BEDEL").ToString
+                    End If
+                    If Not IsDBNull(dataReaderk("IRTIFAK_BEDEL")) Then
+                        MyParsel.IrtifakBedel = dataReaderk("IRTIFAK_BEDEL").ToString
+                    End If
+                    If Not IsDBNull(dataReaderk("GECICI_IRTIFAK_BEDEL")) Then
+                        MyParsel.GeciciIrtifakBedel = dataReaderk("GECICI_IRTIFAK_BEDEL").ToString
+                    End If
+                    MyParsel.AraziVasfi = dataReaderk("ARAZI_VASFI").ToString
+                    MyParsel.KamulastirmaAmaci = dataReaderk("KAMULASTIRMA_AMACI").ToString
+                    MyParsel.YayginMunavebeSistemi = dataReaderk("YAYGIN_MUNAVEBE_SISTEMI").ToString
+                    MyParsel.DegerlemeRaporu = dataReaderk("DEGERLEME_RAPORU").ToString
+                    If Not IsDBNull(dataReaderk("YILLIK_ORTALAMA_NET_GELIR")) Then
+                        MyParsel.YillikOrtalamaNetGelir = dataReaderk("YILLIK_ORTALAMA_NET_GELIR")
+                    End If
+                    If Not IsDBNull(dataReaderk("KAPITALIZASYON_FAIZI")) Then
+                        MyParsel.KapitalizasyonOrani = dataReaderk("KAPITALIZASYON_FAIZI")
+                    End If
+                    If Not IsDBNull(dataReaderk("OBJEKTIF_ARTIS")) Then
+                        MyParsel.ObjektifArtis = dataReaderk("OBJEKTIF_ARTIS")
+                    End If
+                    If Not IsDBNull(dataReaderk("ART_KISIM_ARTIS")) Then
+                        MyParsel.ArtanKisimArtis = dataReaderk("ART_KISIM_ARTIS")
+                    End If
+                    If Not IsDBNull(dataReaderk("VERIM_KAYBI")) Then
+                        MyParsel.VerimKaybi = dataReaderk("VERIM_KAYBI")
+                    End If
+                    If Not IsDBNull(dataReaderk("DEGERLEME_TARIHI")) Then
+                        MyParsel.DegerlemeTarihi = dataReaderk("DEGERLEME_TARIHI").ToString
+                    End If
+                Loop
+                dataReaderk.Close()
+                dataReaderk = Nothing
+                commandk = Nothing
+            Catch ex As Exception
+                'MyParsel = Nothing
+            End Try
+        End Using
+        Return MyParsel
+    End Function
+
     Public Function GetParselKod(ParselID As Long) As ParselKod
         Dim MyParselKod As New ParselKod
         Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
             Try
                 Dim command As SqlCommand = connection.CreateCommand()
                 command.CommandText = "SELECT * FROM PARSEL_KOD WHERE PARSEL_ID=" & ParselID.ToString
+                If Not connection.State = ConnectionState.Open Then connection.Open()
+                Dim dataReader As SqlDataReader = command.ExecuteReader()
+                Do While dataReader.Read()
+                    MyParselKod.ID = dataReader("ID")
+                    If Not IsDBNull(dataReader("BOLGE_ID")) Then
+                        MyParselKod.BolgeID = dataReader("BOLGE_ID")
+                    End If
+                    If Not IsDBNull(dataReader("KADASTRAL_DURUM")) Then
+                        MyParselKod.KadastralDurum = dataReader("KADASTRAL_DURUM")
+                    End If
+                    If Not IsDBNull(dataReader("MALIK_TIPI")) Then
+                        MyParselKod.MalikTipi = dataReader("MALIK_TIPI")
+                    End If
+                    If Not IsDBNull(dataReader("ISTIMLAK_TURU")) Then
+                        MyParselKod.IstimlakTuru = dataReader("ISTIMLAK_TURU")
+                    End If
+                    If Not IsDBNull(dataReader("ISTIMLAK_SERHI")) Then
+                        MyParselKod.IstimlakSerhi = dataReader("ISTIMLAK_SERHI")
+                    End If
+                    If Not IsDBNull(dataReader("DAVA10_DURUMU")) Then
+                        MyParselKod.DavaDurumu10 = dataReader("DAVA10_DURUMU")
+                    End If
+                    If Not IsDBNull(dataReader("DAVA27_DURUMU")) Then
+                        MyParselKod.DavaDurumu27 = dataReader("DAVA27_DURUMU")
+                    End If
+                    If Not IsDBNull(dataReader("EDINIM_DURUMU")) Then
+                        MyParselKod.EdinimDurumu = dataReader("EDINIM_DURUMU")
+                    End If
+                    MyParselKod.IstimlakDisi = dataReader("ISTIMLAK_DISI")
+                    MyParselKod.DevirDurumu = dataReader("DEVIR_DURUMU")
+                    MyParselKod.OdemeDurumu = dataReader("ODEME_DURUMU")
+                Loop
+                dataReader.Close()
+                dataReader = Nothing
+                command = Nothing
+            Catch ex As Exception
+                'MyParsel = Nothing
+            End Try
+        End Using
+        Return MyParselKod
+    End Function
+
+    Public Function GetParselKod(ParselGUID As String) As ParselKod
+        Dim MyParselKod As New ParselKod
+        Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
+            Try
+                Dim command As SqlCommand = connection.CreateCommand()
+                command.CommandText = "SELECT * FROM PARSEL_KOD WHERE PARSEL_GLOBALID=" & ParselGUID
                 If Not connection.State = ConnectionState.Open Then connection.Open()
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
@@ -557,6 +728,44 @@ Public Class SQL
         End Using
         Return MyKisi
     End Function
+
+    Public Function GetKisi(KisiGUID As String) As Kisi
+        Dim MyKisi As New Kisi
+        Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
+            Try
+                Dim command As SqlCommand = connection.CreateCommand()
+                command.CommandText = "SELECT * FROM KISI WHERE ID=" & KisiGUID
+                If Not connection.State = ConnectionState.Open Then connection.Open()
+                Dim dataReader As SqlDataReader = command.ExecuteReader()
+                Do While dataReader.Read()
+                    MyKisi.GUID = KisiGUID
+                    If Not IsDBNull(dataReader("TC_KIMLIK_NO")) Then
+                        MyKisi.TCKimlikNo = dataReader("TC_KIMLIK_NO")
+                    End If
+                    MyKisi.Adi = dataReader("ADI").ToString
+                    MyKisi.Soyadi = dataReader("SOYADI").ToString
+                    MyKisi.Cinsiyet = dataReader("CINSIYET").ToString
+                    MyKisi.Baba = dataReader("BABA").ToString
+                    MyKisi.Durumu = dataReader("DURUMU").ToString
+                    MyKisi.Adres = dataReader("ADRES").ToString
+                    MyKisi.Telefon = dataReader("TELEFON").ToString
+                    If Not IsDBNull(dataReader("DOGUM_TARIHI")) Then
+                        MyKisi.DogumTarihi = dataReader("DOGUM_TARIHI")
+                    End If
+                    MyKisi.DogumYeri = dataReader("DOGUM_YERI").ToString
+                    MyKisi.IBAN = dataReader("IBAN").ToString
+                    MyKisi.BankaSubeKodu = dataReader("SUBE_KODU").ToString
+                Loop
+                dataReader.Close()
+                dataReader = Nothing
+                command = Nothing
+            Catch ex As Exception
+
+            End Try
+        End Using
+        Return MyKisi
+    End Function
+
 
     'Public Function GetKisi(KisiID As Long, MulkiyetID As Long) As Kisi
     '    Dim MyKisi As New Kisi
@@ -861,11 +1070,11 @@ Public Class SQL
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
                     MyMustemilat.ID = MustemilatID
-                    If Not IsDBNull(dataReader("PARSEL_ID")) Then
-                        MyMustemilat.ParselID = dataReader("PARSEL_ID")
+                    If Not IsDBNull(dataReader("PARSEL_GLOBALID")) Then
+                        MyMustemilat.ParselGUID = dataReader("PARSEL_GLOBALID")
                     End If
-                    If Not IsDBNull(dataReader("SAHIP_ID")) Then
-                        MyMustemilat.SahipID = dataReader("SAHIP_ID")
+                    If Not IsDBNull(dataReader("SAHIP_GLOBALID")) Then
+                        MyMustemilat.SahipGUID = dataReader("SAHIP_GLOBALID")
                     End If
                     MyMustemilat.Tanim = dataReader("TANIM").ToString
                     If Not IsDBNull(dataReader("ADET")) Then
@@ -883,8 +1092,8 @@ Public Class SQL
                     If Not IsDBNull(dataReader("PAYDA")) Then
                         MyMustemilat.Payda = dataReader("PAYDA")
                     End If
-                    If Not IsDBNull(dataReader("ODEME_ID")) Then
-                        MyMustemilat.OdemeID = dataReader("ODEME_ID")
+                    If Not IsDBNull(dataReader("ODEME_GLOBALID")) Then
+                        MyMustemilat.OdemeGUID = dataReader("ODEME_GLOBALID")
                     End If
                 Loop
                 dataReader.Close()
@@ -897,12 +1106,12 @@ Public Class SQL
         Return MyMustemilat
     End Function
 
-    Public Function GetMustemilatlar(ParselID As Long, SahipID As Long) As Collection
+    Public Function GetMustemilatlar(ParselGUID As String, SahipGUID As String) As Collection
         Dim MyMustemilatlar As New Collection
         Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
             Try
                 Dim command As SqlCommand = connection.CreateCommand()
-                command.CommandText = "SELECT * FROM MUSTEMILAT WHERE PARSEL_ID=" & ParselID.ToString & " AND SAHIP_ID=" & SahipID.ToString
+                command.CommandText = "SELECT * FROM MUSTEMILAT WHERE PARSEL_GLOBALID=" & ParselGUID & " AND SAHIP_GLOBALID=" & SahipGUID
                 If Not connection.State = ConnectionState.Open Then connection.Open()
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
@@ -910,8 +1119,11 @@ Public Class SQL
                     If Not IsDBNull(dataReader("ID")) Then
                         MyMustemilat.ID = dataReader("ID")
                     End If
-                    MyMustemilat.ParselID = ParselID
-                    MyMustemilat.SahipID = SahipID
+                    If Not IsDBNull(dataReader("GLOBALID")) Then
+                        MyMustemilat.GUID = dataReader("GLOBALID")
+                    End If
+                    MyMustemilat.ParselGUID = ParselGUID
+                    MyMustemilat.SahipGUID = SahipGUID
                     MyMustemilat.Tanim = dataReader("TANIM").ToString
                     If Not IsDBNull(dataReader("ADET")) Then
                         MyMustemilat.Adet = dataReader("ADET")
@@ -928,8 +1140,8 @@ Public Class SQL
                     If Not IsDBNull(dataReader("PAYDA")) Then
                         MyMustemilat.Payda = dataReader("PAYDA")
                     End If
-                    If Not IsDBNull(dataReader("ODEME_ID")) Then
-                        MyMustemilat.OdemeID = dataReader("ODEME_ID")
+                    If Not IsDBNull(dataReader("ODEME_GLOBALID")) Then
+                        MyMustemilat.OdemeGUID = dataReader("ODEME_GLOBALID")
                     End If
                     MyMustemilatlar.Add(MyMustemilat)
                 Loop
@@ -953,11 +1165,11 @@ Public Class SQL
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
                     MyMevsimlik.ID = MevsimlikID
-                    If Not IsDBNull(dataReader("PARSEL_ID")) Then
-                        MyMevsimlik.ParselID = dataReader("PARSEL_ID")
+                    If Not IsDBNull(dataReader("PARSEL_GLOBALID")) Then
+                        MyMevsimlik.ParselGUID = dataReader("PARSEL_GLOBALID")
                     End If
-                    If Not IsDBNull(dataReader("SAHIP_ID")) Then
-                        MyMevsimlik.SahipID = dataReader("SAHIP_ID")
+                    If Not IsDBNull(dataReader("SAHIP_GLOBALID")) Then
+                        MyMevsimlik.SahipGUID = dataReader("SAHIP_GLOBALID")
                     End If
                     MyMevsimlik.Tanim = dataReader("TANIM").ToString
                     If Not IsDBNull(dataReader("ALAN")) Then
@@ -976,7 +1188,7 @@ Public Class SQL
                         MyMevsimlik.Payda = dataReader("PAYDA")
                     End If
                     If Not IsDBNull(dataReader("ODEME_ID")) Then
-                        MyMevsimlik.OdemeID = dataReader("ODEME_ID")
+                        MyMevsimlik.OdemeGUID = dataReader("ODEME_GLOBALID")
                     End If
                 Loop
                 dataReader.Close()
@@ -989,21 +1201,24 @@ Public Class SQL
         Return MyMevsimlik
     End Function
 
-    Public Function GetMevsimlikler(ParselID As Long, SahipID As Long) As Collection
+    Public Function GetMevsimlikler(ParselGUID As String, SahipGUID As String) As Collection
         Dim MyMevsimlikler As New Collection
         Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
             Try
                 Dim command As SqlCommand = connection.CreateCommand()
-                command.CommandText = "SELECT * FROM MEVSIMLIK WHERE PARSEL_ID=" & ParselID.ToString & " AND SAHIP_ID=" & SahipID.ToString
+                command.CommandText = "SELECT * FROM MEVSIMLIK WHERE PARSEL_GLOBALID=" & ParselGUID & " AND SAHIP_GLOBALID=" & SahipGUID
                 If Not connection.State = ConnectionState.Open Then connection.Open()
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
                     Dim MyMevsimlik As New Mevsimlik
-                    If Not IsDBNull(dataReader("PARSEL_ID")) Then
+                    If Not IsDBNull(dataReader("GLOBALID")) Then
+                        MyMevsimlik.GUID = dataReader("GLOBALID")
+                    End If
+                    If Not IsDBNull(dataReader("ID")) Then
                         MyMevsimlik.ID = dataReader("ID")
                     End If
-                    MyMevsimlik.ParselID = ParselID
-                    MyMevsimlik.SahipID = SahipID
+                    MyMevsimlik.ParselGUID = ParselGUID
+                    MyMevsimlik.SahipGUID = SahipGUID
                     MyMevsimlik.Tanim = dataReader("TANIM").ToString
                     If Not IsDBNull(dataReader("ALAN")) Then
                         MyMevsimlik.Alan = dataReader("ALAN")
@@ -1020,8 +1235,8 @@ Public Class SQL
                     If Not IsDBNull(dataReader("PAYDA")) Then
                         MyMevsimlik.Payda = dataReader("PAYDA")
                     End If
-                    If Not IsDBNull(dataReader("ODEME_ID")) Then
-                        MyMevsimlik.OdemeID = dataReader("ODEME_ID")
+                    If Not IsDBNull(dataReader("ODEME_GLOBALID")) Then
+                        MyMevsimlik.OdemeGUID = dataReader("ODEME_GLOBALID")
                     End If
                     MyMevsimlikler.Add(MyMevsimlik)
                 Loop
@@ -1045,8 +1260,8 @@ Public Class SQL
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
                     MyDavaAcele.ID = DavaAceleID
-                    If Not IsDBNull(dataReader("PARSEL_ID")) Then
-                        MyDavaAcele.ParselID = dataReader("PARSEL_ID")
+                    If Not IsDBNull(dataReader("PARSEL_GLOBALID")) Then
+                        MyDavaAcele.ParselGUID = dataReader("PARSEL_GLOBALID")
                     End If
                     MyDavaAcele.Mahkeme = dataReader("MAHKEME").ToString
                     MyDavaAcele.EsasNo = dataReader("ESAS_NO").ToString
@@ -1099,8 +1314,8 @@ Public Class SQL
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
                     MyDavaTescil.ID = DavaTescilID
-                    If Not IsDBNull(dataReader("PARSEL_ID")) Then
-                        MyDavaTescil.ParselID = dataReader("PARSEL_ID")
+                    If Not IsDBNull(dataReader("PARSEL_GLOBALID")) Then
+                        MyDavaTescil.ParselGUID = dataReader("PARSEL_GLOBALID")
                     End If
                     MyDavaTescil.Mahkeme = dataReader("MAHKEME").ToString
                     MyDavaTescil.EsasNo = dataReader("ESAS_NO").ToString
@@ -1165,14 +1380,14 @@ Public Class SQL
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
                     MyOdeme.ID = OdemeID
-                    If Not IsDBNull(dataReader("PARSEL_ID")) Then
-                        MyOdeme.ParselID = dataReader("PARSEL_ID")
+                    If Not IsDBNull(dataReader("PARSEL_GLOBALID")) Then
+                        MyOdeme.ParselGUID = dataReader("PARSEL_GLOBALID")
                     End If
-                    If Not IsDBNull(dataReader("KISI_ID")) Then
-                        MyOdeme.KisiID = dataReader("KISI_ID")
+                    If Not IsDBNull(dataReader("KISI_GLOBALID")) Then
+                        MyOdeme.KisiGUID = dataReader("KISI_GLOBALID")
                     End If
-                    If Not IsDBNull(dataReader("ONAY_ID")) Then
-                        MyOdeme.OnayID = dataReader("ONAY_ID")
+                    If Not IsDBNull(dataReader("ONAY_GLOBALID")) Then
+                        MyOdeme.OnayGUID = dataReader("ONAY_GLOBALID")
                     End If
                     If Not IsDBNull(dataReader("ODENEN_BEDEL")) Then
                         MyOdeme.Tutar = dataReader("ODENEN_BEDEL")
@@ -1263,16 +1478,16 @@ Public Class SQL
         Return MyID
     End Function
 
-    Public Function GetProjeID(_Proje As Proje) As Long
+    Public Function GetProjeGUID(_Proje As Proje) As Long
         Dim MyID As Long = -1
         Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
             Try
                 Dim command As SqlCommand = connection.CreateCommand()
-                command.CommandText = "SELECT ID FROM PROJE WHERE AD='" & _Proje.Ad.ToString & "'"
+                command.CommandText = "SELECT GLOBALID FROM PROJE WHERE AD='" & _Proje.Ad.ToString & "'"
                 If Not connection.State = ConnectionState.Open Then connection.Open()
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
-                    MyID = dataReader("ID")
+                    MyID = dataReader("GLOBALID")
                 Loop
                 dataReader.Close()
                 dataReader = Nothing
@@ -1390,7 +1605,7 @@ Public Class SQL
         Return MyID
     End Function
 
-    Public Function GetUser(_Connection As ConnectionInfo, _User As User) As User
+    Public Function GetUser(_User As User) As User
         Dim MyUser As New User(_User.Name)
         Using connection As New SqlConnection(MyLogConnectionInfo.ConnectionString)
             Try
@@ -1400,37 +1615,38 @@ Public Class SQL
                 Dim dataReader As SqlDataReader = command.ExecuteReader()
                 Do While dataReader.Read()
 
-                    Dim MyAuthorization As New Authorization
                     'MyAuthorization.ConnectSQL = dataReader("ConnectSQL")
-                    MyAuthorization.DavaRead = dataReader("DavaRead")
-                    MyAuthorization.DavaWrite = dataReader("DavaWrite")
-                    MyAuthorization.KamuRead = dataReader("KamuRead")
-                    MyAuthorization.KamuWrite = dataReader("KamuWrite")
-                    MyAuthorization.KisiRead = dataReader("KisiRead")
-                    MyAuthorization.KisiWrite = dataReader("KisiWrite")
-                    MyAuthorization.MevsimlikRead = dataReader("MevsimlikRead")
-                    MyAuthorization.MevsimlikWrite = dataReader("MevsimlikWrite")
-                    MyAuthorization.MustemilatRead = dataReader("MustemilatRead")
-                    MyAuthorization.MustemilatWrite = dataReader("MustemilatWrite")
-                    MyAuthorization.OdemeRead = dataReader("OdemeRead")
-                    MyAuthorization.OdemeWrite = dataReader("OdemeWrite")
-                    MyAuthorization.ParselRead = dataReader("ParselRead")
-                    MyAuthorization.ParselWrite = dataReader("ParselWrite")
-                    MyAuthorization.ProjeRead = dataReader("ProjeRead")
-                    MyAuthorization.ProjeWrite = dataReader("ProjeWrite")
-                    MyAuthorization.MalikSurecRead = dataReader("MalikSurecRead")
-                    MyAuthorization.MalikSurecWrite = dataReader("MalikSurecWrite")
-                    MyAuthorization.ParselSurecRead = dataReader("ParselSurecRead")
-                    MyAuthorization.ParselSurecWrite = dataReader("ParselSurecWrite")
-                    MyAuthorization.CanImport = dataReader("CanImport")
-                    MyAuthorization.CanExport = dataReader("CanExport")
-                    MyAuthorization.BasitAnaliz = dataReader("BasitAnaliz")
-                    MyAuthorization.GelismisAnaliz = dataReader("GelismisAnaliz")
-                    MyAuthorization.OdemeEmri = dataReader("OdemeEmri")
-                    MyAuthorization.BolgeID = dataReader("BolgeID")
-                    MyAuthorization.TakpasSorgu = dataReader("Takpas")
-                    MyAuthorization.LogView = dataReader("LogView")
-                    MyAuthorization.ManageUsers = dataReader("ManageUsers")
+                    Dim MyAuthorization As New Authorization With {
+                        .DavaRead = dataReader("DavaRead"),
+                        .DavaWrite = dataReader("DavaWrite"),
+                        .KamuRead = dataReader("KamuRead"),
+                        .KamuWrite = dataReader("KamuWrite"),
+                        .KisiRead = dataReader("KisiRead"),
+                        .KisiWrite = dataReader("KisiWrite"),
+                        .MevsimlikRead = dataReader("MevsimlikRead"),
+                        .MevsimlikWrite = dataReader("MevsimlikWrite"),
+                        .MustemilatRead = dataReader("MustemilatRead"),
+                        .MustemilatWrite = dataReader("MustemilatWrite"),
+                        .OdemeRead = dataReader("OdemeRead"),
+                        .OdemeWrite = dataReader("OdemeWrite"),
+                        .ParselRead = dataReader("ParselRead"),
+                        .ParselWrite = dataReader("ParselWrite"),
+                        .ProjeRead = dataReader("ProjeRead"),
+                        .ProjeWrite = dataReader("ProjeWrite"),
+                        .MalikSurecRead = dataReader("MalikSurecRead"),
+                        .MalikSurecWrite = dataReader("MalikSurecWrite"),
+                        .ParselSurecRead = dataReader("ParselSurecRead"),
+                        .ParselSurecWrite = dataReader("ParselSurecWrite"),
+                        .CanImport = dataReader("CanImport"),
+                        .CanExport = dataReader("CanExport"),
+                        .BasitAnaliz = dataReader("BasitAnaliz"),
+                        .GelismisAnaliz = dataReader("GelismisAnaliz"),
+                        .OdemeEmri = dataReader("OdemeEmri"),
+                        .BolgeID = dataReader("BolgeID"),
+                        .TakpasSorgu = dataReader("Takpas"),
+                        .LogView = dataReader("LogView"),
+                        .ManageUsers = dataReader("ManageUsers")
+                    }
 
                     Dim MyUserGroup As New UserGroup(dataReader("Name").ToString, MyAuthorization)
                     MyAuthorization = Nothing
@@ -1453,73 +1669,73 @@ Public Class SQL
     Public Function GetMulkiyet(KisiID As Long, MulkiyetID As Long) As Kisi
         Dim MyKisi As New Kisi
         Using connection As New SqlConnection(MyConnectionInfo.ConnectionString)
-            Dim command As SqlCommand = connection.CreateCommand()
-            command.CommandText = "SELECT * FROM KISI WHERE ID=" & KisiID.ToString
-            Try
-                If Not connection.State = ConnectionState.Open Then connection.Open()
-                Dim dataReader As SqlDataReader = command.ExecuteReader()
-                Do While dataReader.Read()
-                    MyKisi.ID = KisiID
-                    If Not IsDBNull(dataReader("TC_KIMLIK_NO")) Then
-                        MyKisi.TCKimlikNo = dataReader("TC_KIMLIK_NO")
-                    End If
-                    MyKisi.Adi = dataReader("ADI").ToString
-                    MyKisi.Soyadi = dataReader("SOYADI").ToString
-                    MyKisi.Cinsiyet = dataReader("CINSIYET").ToString
-                    MyKisi.Baba = dataReader("BABA").ToString
-                    MyKisi.Durumu = dataReader("DURUMU").ToString
-                    MyKisi.Adres = dataReader("ADRES").ToString
-                    MyKisi.Telefon = dataReader("TELEFON").ToString
-                    'MyKisi.Dusunceler = "" 'dataReader("DUSUNCELER").ToString
-                    If Not IsDBNull(dataReader("DOGUM_TARIHI")) Then
-                        MyKisi.DogumTarihi = dataReader("DOGUM_TARIHI")
-                    End If
-                    MyKisi.DogumYeri = dataReader("DOGUM_YERI").ToString
-                    MyKisi.IBAN = dataReader("IBAN").ToString
-                    MyKisi.BankaSubeKodu = dataReader("SUBE_KODU").ToString
-                Loop
-                dataReader.Close()
-                dataReader = Nothing
-                'command = Nothing
-            Catch ex As Exception
+            Using command As SqlCommand = connection.CreateCommand()
+                command.CommandText = "SELECT * FROM KISI WHERE ID=" & KisiID.ToString
+                Try
+                    If Not connection.State = ConnectionState.Open Then connection.Open()
+                    Using dataReader As SqlDataReader = command.ExecuteReader()
+                        Do While dataReader.Read()
+                            MyKisi.ID = KisiID
+                            If Not IsDBNull(dataReader("TC_KIMLIK_NO")) Then
+                                MyKisi.TCKimlikNo = dataReader("TC_KIMLIK_NO")
+                            End If
+                            MyKisi.Adi = dataReader("ADI").ToString
+                            MyKisi.Soyadi = dataReader("SOYADI").ToString
+                            MyKisi.Cinsiyet = dataReader("CINSIYET").ToString
+                            MyKisi.Baba = dataReader("BABA").ToString
+                            MyKisi.Durumu = dataReader("DURUMU").ToString
+                            MyKisi.Adres = dataReader("ADRES").ToString
+                            MyKisi.Telefon = dataReader("TELEFON").ToString
+                            'MyKisi.Dusunceler = "" 'dataReader("DUSUNCELER").ToString
+                            If Not IsDBNull(dataReader("DOGUM_TARIHI")) Then
+                                MyKisi.DogumTarihi = dataReader("DOGUM_TARIHI")
+                            End If
+                            MyKisi.DogumYeri = dataReader("DOGUM_YERI").ToString
+                            MyKisi.IBAN = dataReader("IBAN").ToString
+                            MyKisi.BankaSubeKodu = dataReader("SUBE_KODU").ToString
+                        Loop
+                        dataReader.Close()
+                    End Using
+                    'command = Nothing
+                Catch ex As Exception
 
-            End Try
-            'Dim command As OleDbCommand = connection.CreateCommand()
-            command.CommandText = "SELECT * FROM MULKIYET WHERE ID=" & MulkiyetID.ToString
-            Try
-                If Not connection.State = ConnectionState.Open Then connection.Open()
-                Dim dataReader1 As SqlDataReader = command.ExecuteReader()
-                Do While dataReader1.Read()
-                    MyKisi.MulkiyetID = MulkiyetID
-                    If Not IsDBNull(dataReader1("PARSEL_ID")) Then
-                        MyKisi.ParselID = dataReader1("PARSEL_ID")
-                    End If
-                    'If Not IsDBNull(dataReader1("KISI_ID")) Then
-                    '    MyKisi.ID = dataReader1("KISI_ID")
-                    'End If
-                    If Not IsDBNull(dataReader1("PAY")) Then
-                        MyKisi.HissePay = dataReader1("PAY")
-                    End If
-                    If Not IsDBNull(dataReader1("PAYDA")) Then
-                        MyKisi.HissePayda = dataReader1("PAYDA")
-                    End If
-                    If Not IsDBNull(dataReader1("TAPU_TARIHI")) Then
-                        MyKisi.TapuTarihi = dataReader1("TAPU_TARIHI")
-                    End If
-                    MyKisi.Rehin = dataReader1("HISSE_REHIN").ToString
-                    MyKisi.RehinAlacakli = dataReader1("HISSE_REHIN_ALACAKLI").ToString
-                    MyKisi.SerhBeyan = dataReader1("HISSE_SERH").ToString
-                    MyKisi.Dusunceler = dataReader1("DUSUNCELER").ToString
-                Loop
-                dataReader1.Close()
-                dataReader1 = Nothing
-                command = Nothing
+                End Try
+                'Dim command As OleDbCommand = connection.CreateCommand()
+                command.CommandText = "SELECT * FROM MULKIYET WHERE ID=" & MulkiyetID.ToString
+                Try
+                    If Not connection.State = ConnectionState.Open Then connection.Open()
+                    Using dataReader1 As SqlDataReader = command.ExecuteReader()
+                        Do While dataReader1.Read()
+                            MyKisi.MulkiyetID = MulkiyetID
+                            If Not IsDBNull(dataReader1("PARSEL_ID")) Then
+                                MyKisi.ParselID = dataReader1("PARSEL_ID")
+                            End If
+                            'If Not IsDBNull(dataReader1("KISI_ID")) Then
+                            '    MyKisi.ID = dataReader1("KISI_ID")
+                            'End If
+                            If Not IsDBNull(dataReader1("PAY")) Then
+                                MyKisi.HissePay = dataReader1("PAY")
+                            End If
+                            If Not IsDBNull(dataReader1("PAYDA")) Then
+                                MyKisi.HissePayda = dataReader1("PAYDA")
+                            End If
+                            If Not IsDBNull(dataReader1("TAPU_TARIHI")) Then
+                                MyKisi.TapuTarihi = dataReader1("TAPU_TARIHI")
+                            End If
+                            MyKisi.Rehin = dataReader1("HISSE_REHIN").ToString
+                            MyKisi.RehinAlacakli = dataReader1("HISSE_REHIN_ALACAKLI").ToString
+                            MyKisi.SerhBeyan = dataReader1("HISSE_SERH").ToString
+                            MyKisi.Dusunceler = dataReader1("DUSUNCELER").ToString
+                        Loop
+                        dataReader1.Close()
+                    End Using
 
-                ' connection.Close()
-                ' connection = Nothing
-            Catch ex As Exception
+                    ' connection.Close()
+                    ' connection = Nothing
+                Catch ex As Exception
 
-            End Try
+                End Try
+            End Using
         End Using
         Return MyKisi
     End Function
@@ -1606,12 +1822,12 @@ Public Class SQL
                 MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
                 MyRow = Nothing
 
-                Dim MyCommandBuilder As New SqlCommandBuilder
-                MyCommandBuilder.DataAdapter = MyDataAdapter
-                MyDataAdapter.Update(MyTable)
+                Using MyCommandBuilder As New SqlCommandBuilder
+                    MyCommandBuilder.DataAdapter = MyDataAdapter
+                    MyDataAdapter.Update(MyTable)
 
-                MyTable = Nothing
-                MyCommandBuilder = Nothing
+                    MyTable = Nothing
+                End Using
                 MyDataAdapter = Nothing
             Catch ex As Exception
                 MyRowID = -1
@@ -1655,13 +1871,13 @@ Public Class SQL
                 Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
                 MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
 
-                Dim MyCommandBuilder As New SqlCommandBuilder
-                MyCommandBuilder.DataAdapter = MyDataAdapter
-                MyDataAdapter.Update(MyTable)
+                Using MyCommandBuilder As New SqlCommandBuilder
+                    MyCommandBuilder.DataAdapter = MyDataAdapter
+                    MyDataAdapter.Update(MyTable)
 
-                MyRow = Nothing
-                MyTable = Nothing
-                MyCommandBuilder = Nothing
+                    MyRow = Nothing
+                    MyTable = Nothing
+                End Using
                 MyDataAdapter = Nothing
             Catch ex As Exception
                 MyRowID = -1
@@ -1707,13 +1923,13 @@ Public Class SQL
                 Dim MyFieldInfo As System.Reflection.FieldInfo = MyRow.GetType().GetField("_rowID", System.Reflection.BindingFlags.NonPublic Or System.Reflection.BindingFlags.Instance)
                 MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
 
-                Dim MyCommandBuilder As New SqlCommandBuilder
-                MyCommandBuilder.DataAdapter = MyDataAdapter
-                MyDataAdapter.Update(MyTable)
+                Using MyCommandBuilder As New SqlCommandBuilder
+                    MyCommandBuilder.DataAdapter = MyDataAdapter
+                    MyDataAdapter.Update(MyTable)
 
-                MyRow = Nothing
-                MyTable = Nothing
-                MyCommandBuilder = Nothing
+                    MyRow = Nothing
+                    MyTable = Nothing
+                End Using
                 MyDataAdapter = Nothing
 
             Catch ex As Exception
@@ -1749,12 +1965,12 @@ Public Class SQL
                 MyRowID = CLng(MyFieldInfo.GetValue(MyRow))
                 MyRow = Nothing
 
-                Dim MyCommandBuilder As New SqlCommandBuilder
-                MyCommandBuilder.DataAdapter = MyDataAdapter
-                MyDataAdapter.Update(MyTable)
+                Using MyCommandBuilder As New SqlCommandBuilder
+                    MyCommandBuilder.DataAdapter = MyDataAdapter
+                    MyDataAdapter.Update(MyTable)
 
-                MyTable = Nothing
-                MyCommandBuilder = Nothing
+                    MyTable = Nothing
+                End Using
                 MyDataAdapter = Nothing
             Catch ex As Exception
                 MyRowID = -1
@@ -2085,15 +2301,15 @@ Public Class SQL
 
                 MyRow = MyTable.NewRow()
 
-                MyRow("PARSEL_ID") = _Mustemilat.ParselID
-                MyRow("SAHIP_ID") = _Mustemilat.SahipID
+                MyRow("PARSEL_GLOBALID") = _Mustemilat.ParselGUID
+                MyRow("SAHIP_GLOBALID") = _Mustemilat.SahipGUID
                 MyRow("TANIM") = _Mustemilat.Tanim
                 MyRow("ADET") = _Mustemilat.Adet
                 MyRow("FIYAT") = _Mustemilat.Fiyat
                 MyRow("MALIK") = _Mustemilat.Malik
                 MyRow("PAY") = _Mustemilat.Pay
                 MyRow("PAYDA") = _Mustemilat.Payda
-                MyRow("ODEME_ID") = _Mustemilat.OdemeID
+                MyRow("ODEME_IGLOBALD") = _Mustemilat.OdemeGUID
 
                 MyTable.Rows.Add(MyRow)
 
@@ -2132,15 +2348,15 @@ Public Class SQL
 
                 MyRow = MyTable.NewRow()
 
-                MyRow("PARSEL_ID") = _Mevsimlik.ParselID
-                MyRow("SAHIP_ID") = _Mevsimlik.SahipID
+                MyRow("PARSEL_GLOBALID") = _Mevsimlik.ParselGUID
+                MyRow("SAHIP_GLOBALID") = _Mevsimlik.SahipGUID
                 MyRow("TANIM") = _Mevsimlik.Tanim
                 MyRow("ALAN") = _Mevsimlik.Alan
                 MyRow("BEDEL") = _Mevsimlik.Bedel
                 MyRow("MALIK") = _Mevsimlik.Malik
                 MyRow("PAY") = _Mevsimlik.Pay
                 MyRow("PAYDA") = _Mevsimlik.Payda
-                MyRow("ODEME_ID") = _Mevsimlik.OdemeID
+                MyRow("ODEME_GLOBALID") = _Mevsimlik.OdemeGUID
 
                 MyTable.Rows.Add(MyRow)
 
@@ -2179,7 +2395,7 @@ Public Class SQL
 
                 MyRow = MyTable.NewRow()
 
-                MyRow("PARSEL_ID") = _DavaTescil.ParselID
+                MyRow("PARSEL_GLOBALID") = _DavaTescil.ParselGUID
                 MyRow("MAHKEME") = _DavaTescil.Mahkeme
                 MyRow("ESAS_NO") = _DavaTescil.EsasNo
                 MyRow("KARAR_NO") = _DavaTescil.KararNo
@@ -2257,7 +2473,7 @@ Public Class SQL
 
                 MyRow = MyTable.NewRow()
 
-                MyRow("PARSEL_ID") = _DavaAcele.ParselID
+                MyRow("PARSEL_GLOBALID") = _DavaAcele.ParselGUID
                 MyRow("MAHKEME") = _DavaAcele.Mahkeme
                 MyRow("ESAS_NO") = _DavaAcele.EsasNo
                 MyRow("KARAR_NO") = _DavaAcele.KararNo
@@ -2320,8 +2536,8 @@ Public Class SQL
 
                 MyRow = MyTable.NewRow()
 
-                MyRow("MURIS") = _Muris.ID
-                MyRow("VARIS") = _Varis.ID
+                MyRow("MURIS") = _Muris.GUID
+                MyRow("VARIS") = _Varis.GUID
 
                 MyTable.Rows.Add(MyRow)
 
@@ -2368,8 +2584,8 @@ Public Class SQL
                 MyRow("KAYNAK") = _Odeme.Kaynak
                 MyRow("ODEME_DURUMU") = _Odeme.Durumu
 
-                MyRow("PARSEL_ID") = _Odeme.ParselID
-                MyRow("KISI_ID") = _Odeme.KisiID
+                MyRow("PARSEL_GLOBALID") = _Odeme.ParselGUID
+                MyRow("KISI_GLOBALID") = _Odeme.KisiGUID
                 MyRow("ODEME_TIPI") = _Odeme.Tipi
                 MyRow("ACIKLAMA") = _Odeme.Aciklama
 
@@ -2489,7 +2705,7 @@ Public Class SQL
             Try
                 If Not connection.State = ConnectionState.Open Then connection.Open()
 
-                Dim MyQueryString As String = "SELECT * FROM KAMULASTIRMA WHERE ID=" & _Parsel.KamuID.ToString
+                Dim MyQueryString As String = "SELECT * FROM KAMULASTIRMA WHERE PARSEL_GLOBALID=" & _Parsel.GUID
                 Dim MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryString, connection))
 
                 Dim MyTable As New DataTable
@@ -2498,7 +2714,7 @@ Public Class SQL
                 Dim MyRows() As DataRow = MyTable.Select()
 
                 For Each MyRow As DataRow In MyTable.Select
-                    MyRow("PARSEL_ID") = _Parsel.ID
+                    'MyRow("PARSEL_ID") = _Parsel.ID
                     MyRow("MULKIYET_ALAN") = _Parsel.MulkiyetAlan
                     MyRow("IRTIFAK_ALAN") = _Parsel.IrtifakAlan
                     MyRow("GECICI_IRTIFAK_ALAN") = _Parsel.GeciciIrtifakAlan
@@ -2541,7 +2757,7 @@ Public Class SQL
             Try
                 If Not connection.State = ConnectionState.Open Then connection.Open()
 
-                Dim MyQueryString As String = "SELECT * FROM PROJE WHERE ID=" & _Proje.ID.ToString
+                Dim MyQueryString As String = "SELECT * FROM PROJE WHERE GLOBALID=" & _Proje.GUID
                 Dim MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryString, connection))
 
                 Dim MyTable As New DataTable
@@ -2555,8 +2771,9 @@ Public Class SQL
                     MyRow("PROJE_NOTLARI") = _Proje.ProjeNotlari
                 Next
 
-                Dim MyCommandBuilder As New SqlCommandBuilder
-                MyCommandBuilder.DataAdapter = MyDataAdapter
+                Dim MyCommandBuilder As New SqlCommandBuilder With {
+                    .DataAdapter = MyDataAdapter
+                }
                 MyDataAdapter.Update(MyTable)
 
                 MyTable = Nothing
@@ -2576,7 +2793,7 @@ Public Class SQL
             Try
                 If Not connection.State = ConnectionState.Open Then connection.Open()
 
-                Dim MyQueryString As String = "SELECT * FROM KISI WHERE ID=" & _Kisi.ID.ToString
+                Dim MyQueryString As String = "SELECT * FROM KISI WHERE GLOBALID=" & _Kisi.GUID
                 Dim MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryString, connection))
 
                 Dim MyTable As New DataTable
@@ -2891,15 +3108,15 @@ Public Class SQL
                 Dim MyRows() As DataRow = MyTable.Select()
 
                 For Each MyRow As DataRow In MyTable.Select
-                    MyRow("PARSEL_ID") = _Mustemilat.ParselID
-                    MyRow("SAHIP_ID") = _Mustemilat.SahipID
+                    MyRow("PARSEL_GLOBALID") = _Mustemilat.ParselGUID
+                    MyRow("SAHIP_GLOBALID") = _Mustemilat.SahipGUID
                     MyRow("TANIM") = _Mustemilat.Tanim
                     MyRow("ADET") = _Mustemilat.Adet
                     MyRow("FIYAT") = _Mustemilat.Fiyat
                     MyRow("MALIK") = _Mustemilat.Malik
                     MyRow("PAY") = _Mustemilat.Pay
                     MyRow("PAYDA") = _Mustemilat.Payda
-                    MyRow("ODEME_ID") = _Mustemilat.OdemeID
+                    MyRow("ODEME_GLOBALID") = _Mustemilat.OdemeGUID
                 Next
 
                 Dim MyCommandBuilder As New SqlCommandBuilder
@@ -2924,7 +3141,7 @@ Public Class SQL
             Try
                 If Not connection.State = ConnectionState.Open Then connection.Open()
 
-                Dim MyQueryString As String = "SELECT * FROM MEVSIMLIK WHERE ID=" & _Mevsimlik.ID.ToString
+                Dim MyQueryString As String = "SELECT * FROM MEVSIMLIK WHERE GLOBALID=" & _Mevsimlik.GUID
                 Dim MyDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryString, connection))
 
                 Dim MyTable As New DataTable
@@ -2933,15 +3150,15 @@ Public Class SQL
                 Dim MyRows() As DataRow = MyTable.Select()
 
                 For Each MyRow As DataRow In MyTable.Select
-                    MyRow("PARSEL_ID") = _Mevsimlik.ParselID
-                    MyRow("SAHIP_ID") = _Mevsimlik.SahipID
+                    MyRow("PARSEL_GLOBALID") = _Mevsimlik.ParselGUID
+                    MyRow("SAHIP_GLOBALID") = _Mevsimlik.SahipGUID
                     MyRow("TANIM") = _Mevsimlik.Tanim
                     MyRow("ALAN") = _Mevsimlik.Alan
                     MyRow("BEDEL") = _Mevsimlik.Bedel
                     MyRow("MALIK") = _Mevsimlik.Malik
                     MyRow("PAY") = _Mevsimlik.Pay
                     MyRow("PAYDA") = _Mevsimlik.Payda
-                    MyRow("ODEME_ID") = _Mevsimlik.OdemeID
+                    MyRow("ODEME_GLOBALID") = _Mevsimlik.OdemeGUID
                 Next
 
                 Dim MyCommandBuilder As New SqlCommandBuilder
@@ -2975,7 +3192,7 @@ Public Class SQL
                 Dim MyRows() As DataRow = MyTable.Select()
 
                 For Each MyRow As DataRow In MyTable.Select
-                    MyRow("PARSEL_ID") = _DavaTescil.ParselID
+                    MyRow("PARSEL_GLOBALID") = _DavaTescil.ParselGUID
                     MyRow("MAHKEME") = _DavaTescil.Mahkeme
                     MyRow("ESAS_NO") = _DavaTescil.EsasNo
                     MyRow("KARAR_NO") = _DavaTescil.KararNo
@@ -3069,7 +3286,7 @@ Public Class SQL
                 Dim MyRows() As DataRow = MyTable.Select()
 
                 For Each MyRow As DataRow In MyTable.Select
-                    MyRow("PARSEL_ID") = _DavaAcele.ParselID
+                    MyRow("PARSEL_GLOBALID") = _DavaAcele.ParselGUID
                     MyRow("MAHKEME") = _DavaAcele.Mahkeme
                     MyRow("ESAS_NO") = _DavaAcele.EsasNo
                     MyRow("KARAR_NO") = _DavaAcele.KararNo
@@ -3151,8 +3368,8 @@ Public Class SQL
                     MyRow("KAYNAK") = _Odeme.Kaynak
                     MyRow("ODEME_DURUMU") = _Odeme.Durumu
 
-                    MyRow("PARSEL_ID") = _Odeme.ParselID
-                    MyRow("KISI_ID") = _Odeme.KisiID
+                    MyRow("PARSEL_GLOBALID") = _Odeme.ParselGUID
+                    MyRow("KISI_GLOBALID") = _Odeme.KisiGUID
                     MyRow("ODEME_TIPI") = _Odeme.Tipi
                     MyRow("ACIKLAMA") = _Odeme.Aciklama
                 Next

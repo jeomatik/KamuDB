@@ -1,13 +1,12 @@
 ﻿Imports Kamu.Objects
-
 Public Class DB
     Public ProjectList As Collection
     Public KamuVeriXMLDosya As String
     Public MyOle As New Ole
     Public MySQL As New SQL
     Public MyPgSQL As New PgSQL
-
     Private _LogTut As Boolean
+    Private _ConnectionInfo As ConnectionInfo
 
     Public Property LogTut() As Boolean
         Get
@@ -17,8 +16,6 @@ Public Class DB
             _LogTut = value
         End Set
     End Property
-
-    Private _ConnectionInfo As ConnectionInfo
 
     Public Property ConnectionInfo() As ConnectionInfo
         Get
@@ -42,7 +39,6 @@ Public Class DB
             Dim MyDataTable As New DataTable
             Select Case ConnectionInfo.ConnectionType
                 Case Connections.OleDbConnection
-                    '_SQLCommand = _SQLCommand.Replace("+", "+")
                     MyDataTable = MyOle.GetDataTable(_SQLCommand)
                 Case Connections.SqlConnection
                     _SQLCommand = _SQLCommand.Replace("&", "+")
@@ -116,11 +112,13 @@ Public Class DB
             command.CommandText = "UPDATE KISI_ID=" + _AktifKisiID.ToString + " FROM " + _TableName + " WHERE KISI_ID=" + _PasifKisiID.ToString
             _connection.Open()
 
-            Dim adapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter()
-            adapter.SelectCommand = command
+            Dim adapter As OleDb.OleDbDataAdapter = New OleDb.OleDbDataAdapter With {
+                .SelectCommand = command
+            }
 
-            Dim table As New DataTable
-            table.Locale = System.Globalization.CultureInfo.InvariantCulture
+            Dim table As New DataTable With {
+                .Locale = System.Globalization.CultureInfo.InvariantCulture
+            }
             adapter.Fill(table)
             adapter = Nothing
             _connection.Close()
@@ -146,8 +144,7 @@ Public Class DB
                 Else
                     _Kisi.HasVaris = False
                 End If
-                Dim MyMurisler As New Collection
-                MyMurisler = GetMurisler(_Kisi.ID)
+                Dim MyMurisler As Collection = GetMurisler(_Kisi.ID)
                 If MyMurisler.Count > 0 Then
                     _Kisi.IsVaris = True
                 End If
@@ -157,12 +154,12 @@ Public Class DB
     End Function
 
     Public Function DefineMustemilatOwnerShip(_Mustemilatlar As Collection, _ParselConversionTable As DataTable, _KisiConversionTable As DataTable) As Collection
-        For Each _Mustemilat As Mustemilat In _Mustemilatlar
-            Dim Eski_Parsel_ID As Long = _Mustemilat.ParselID
-            Dim Eski_Kisi_ID As Long = _Mustemilat.SahipID
-            Dim Yeni_Parsel_ID As Long = 0
-            Dim Yeni_Kisi_ID As Long = 0
-            If Eski_Parsel_ID > 0 Then
+        For Each _Mustemilat As Mustemilat In _Mustemilatlar '!!!
+            Dim Eski_Parsel_ID As String = _Mustemilat.ParselGUID
+            Dim Eski_Kisi_ID As String = _Mustemilat.SahipGUID
+            Dim Yeni_Parsel_ID As String = ""
+            Dim Yeni_Kisi_ID As String = ""
+            If Eski_Parsel_ID <> "" Then
                 Dim foundRows() As DataRow = _ParselConversionTable.Select("ESKI_ID=" & Eski_Parsel_ID.ToString)
                 If foundRows.Count > 0 Then
 
@@ -171,7 +168,7 @@ Public Class DB
                     Next i
                 End If
             End If
-            If Eski_Kisi_ID > 0 Then
+            If Eski_Kisi_ID <> "" Then
                 Dim foundRows() As DataRow = _KisiConversionTable.Select("ESKI_ID=" & Eski_Kisi_ID.ToString)
                 If foundRows.Count > 0 Then
                     For i As Integer = 0 To foundRows.GetUpperBound(0)
@@ -180,19 +177,19 @@ Public Class DB
                 End If
 
             End If
-            _Mustemilat.ParselID = Yeni_Parsel_ID
-            _Mustemilat.SahipID = Yeni_Kisi_ID
+            _Mustemilat.ParselGUID = Yeni_Parsel_ID
+            _Mustemilat.SahipGUID = Yeni_Kisi_ID
         Next
         Return _Mustemilatlar
     End Function
 
     Public Function DefineMevsimlikOwnerShip(_Mevsimlikler As Collection, _ParselConversionTable As DataTable, _KisiConversionTable As DataTable) As Collection
         For Each _Mevsimlik As Mevsimlik In _Mevsimlikler
-            Dim Eski_Parsel_ID As Long = _Mevsimlik.ParselID
-            Dim Eski_Kisi_ID As Long = _Mevsimlik.SahipID
-            Dim Yeni_Parsel_ID As Long = 0
-            Dim Yeni_Kisi_ID As Long = 0
-            If Eski_Parsel_ID > 0 Then
+            Dim Eski_Parsel_ID As String = _Mevsimlik.ParselGUID
+            Dim Eski_Kisi_ID As String = _Mevsimlik.SahipGUID
+            Dim Yeni_Parsel_ID As String = ""
+            Dim Yeni_Kisi_ID As String = ""
+            If Eski_Parsel_ID <> "" Then
                 Dim foundRows() As DataRow = _ParselConversionTable.Select("ESKI_ID=" & Eski_Parsel_ID.ToString)
                 If foundRows.Count > 0 Then
                     For i As Integer = 0 To foundRows.GetUpperBound(0)
@@ -200,7 +197,7 @@ Public Class DB
                     Next i
                 End If
             End If
-            If Eski_Kisi_ID > 0 Then
+            If Eski_Kisi_ID <> "" Then
                 Dim foundRows() As DataRow = _KisiConversionTable.Select("ESKI_ID=" & Eski_Kisi_ID.ToString)
                 If foundRows.Count > 0 Then
                     For i As Integer = 0 To foundRows.GetUpperBound(0)
@@ -208,395 +205,11 @@ Public Class DB
                     Next i
                 End If
             End If
-            _Mevsimlik.ParselID = Yeni_Parsel_ID
-            _Mevsimlik.SahipID = Yeni_Kisi_ID
+            _Mevsimlik.ParselGUID = Yeni_Parsel_ID
+            _Mevsimlik.SahipGUID = Yeni_Kisi_ID
         Next
         Return _Mevsimlikler
     End Function
-
-#Region "Get Procedures V5"
-
-    Public Function GetParsellerCollectionV5(_DataTable As DataTable) As Collection
-        Dim MyParseller As New Collection
-        Dim MyMalikler As New Collection
-        Dim MyParsel As New Parsel
-        Dim MyMalik As New Kisi
-        Dim LastAda As String = "-1"
-        Dim LastParsel As String = "-1"
-        Try
-            For Each MyRow As DataRow In _DataTable.Rows
-                If (LastAda = MyRow("ADA").ToString And LastParsel = MyRow("PARSEL").ToString) Then
-                    If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
-                        If MyRow("PARSEL_MALIK_TIPI") = 1 Then
-                            MyMalik = New Kisi(MyRow("MALIK").ToString.Trim)
-                            'MyMalik.MalikTipi = 1
-                        Else
-                            MyMalik = New Kisi(MyRow("MALIK").ToString.Trim, String.Empty)
-                            'MyMalik.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
-                        End If
-                    Else
-                        MyMalik = New Kisi(MyRow("MALIK").ToString.Trim, String.Empty)
-                    End If
-                    MyMalik.Baba = MyRow("BABA").ToString.Trim
-                    If Not IsDBNull(MyRow("TC_KIMLIK_NO")) Then
-                        MyMalik.TCKimlikNo = MyRow("TC_KIMLIK_NO")
-                    End If
-                    If Not IsDBNull(MyRow("HISSE")) Then
-                        If MyRow("HISSE").ToString().Contains("TAM") Then
-                            MyMalik.HissePay = 1
-                            MyMalik.HissePayda = 1
-                        ElseIf MyRow("HISSE").ToString().Contains("VRS") Then
-                            MyMalik.HissePay = 0
-                            MyMalik.HissePayda = 1
-                        Else
-                            If MyRow("HISSE").ToString().Contains("/") Then
-                                Dim RSFRSplit As String() = MyRow("HISSE").ToString().Trim.Split("/")
-                                MyMalik.HissePay = Val(RSFRSplit(0))
-                                MyMalik.HissePayda = Val(RSFRSplit(1))
-                            Else
-                                MyMalik.HissePay = 0
-                                MyMalik.HissePayda = 1
-                            End If
-                        End If
-                    Else
-                        MyMalik.HissePay = 0
-                        MyMalik.HissePayda = 1
-                    End If
-                    If Not IsDBNull(MyRow("TAPUTARIH")) Then
-                        MyMalik.TapuTarihi = MyRow("TAPUTARIH")
-                    End If
-                    MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString.Trim
-
-                    Dim MyMalikKod As New KisiKod
-                    'If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
-                    '    MyMalikKod.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
-                    'End If
-                    If Not IsDBNull(MyRow("DAVETIYE_TEBLIG_DURUMU")) Then
-                        MyMalikKod.DavetiyeTebligDurumu = MyRow("DAVETIYE_TEBLIG_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("DAVETIYE_ALINMA_DURUMU")) Then
-                        MyMalikKod.DavetiyeAlinmaDurumu = MyRow("DAVETIYE_ALINMA_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("GORUSME_DURUMU")) Then
-                        MyMalikKod.GorusmeDurumu = MyRow("GORUSME_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("GORUSME_NO")) Then
-                        MyMalikKod.GorusmeNo = MyRow("GORUSME_NO")
-                    End If
-                    If Not IsDBNull(MyRow("GORUSME_TARIHI")) Then
-                        MyMalikKod.GorusmeTarihi = MyRow("GORUSME_TARIHI")
-                    End If
-                    If Not IsDBNull(MyRow("ANLASMA_DURUMU")) Then
-                        MyMalikKod.AnlasmaDurumu = MyRow("ANLASMA_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("ANLASMA_TARIHI")) Then
-                        MyMalikKod.AnlasmaTarihi = MyRow("ANLASMA_TARIHI")
-                    End If
-                    If Not IsDBNull(MyRow("ANLASMA_DUSUNCELER")) Then
-                        MyMalikKod.AnlasmaDusunceler = MyRow("ANLASMA_DUSUNCELER")
-                    End If
-                    If Not IsDBNull(MyRow("TESCIL_DURUMU")) Then
-                        MyMalikKod.TescilDurumu = MyRow("TESCIL_DURUMU")
-                    End If
-                    MyMalik.Kod = MyMalikKod
-
-                    MyMalikler.Add(MyMalik)
-                    MyMalik = New Kisi
-                Else
-                    If MyMalikler.Count > 0 Then
-                        MyParsel.Malikler = MyMalikler
-                        MyParseller.Add(MyParsel)
-                        MyMalikler = New Collection
-                        MyMalik = New Kisi
-                        MyParsel = New Parsel
-                    End If
-                    If Not IsDBNull(MyRow("PROJE_ID")) Then
-                        If IsNumeric(MyRow("PROJE_ID")) Then
-                            MyParsel.ProjeID = MyRow("PROJE_ID")
-                        Else
-                            MyParsel.ProjeID = 1 'vt5 de proje id alfasayısal olursa treeview sorun çıkıyor.
-                        End If
-                    Else
-                        MyParsel.ProjeID = 1
-                    End If
-                    MyParsel.Il = MyRow("IL").ToString.Trim
-                    MyParsel.Ilce = MyRow("ILCE").ToString.Trim
-                    MyParsel.Koy = MyRow("KOY").ToString.Trim
-                    MyParsel.Mahalle = MyRow("MAHALLE").ToString.Trim
-                    MyParsel.AdaNo = MyRow("ADA").ToString
-                    MyParsel.ParselNo = MyRow("PARSEL").ToString
-                    MyParsel.PaftaNo = MyRow("PAFTA").ToString.Trim
-                    MyParsel.Cinsi = MyRow("CINSI").ToString.Trim
-                    MyParsel.Mevki = MyRow("MEVKI").ToString.Trim
-                    MyParsel.Cilt = MyRow("CILT").ToString.Trim
-                    MyParsel.Sayfa = MyRow("SAYFA").ToString.Trim
-                    If Not IsDBNull(MyRow("TAPU_ALANI")) Then
-                        MyParsel.TapuAlani = MyRow("TAPU_ALANI")
-                    End If
-                    If Not IsDBNull(MyRow("DAIMI_IRTIFAK_ALAN")) Then
-                        MyParsel.IrtifakAlan = MyRow("DAIMI_IRTIFAK_ALAN")
-                    End If
-                    If Not IsDBNull(MyRow("GECICI_IRTIFAK_ALAN")) Then
-                        MyParsel.GeciciIrtifakAlan = MyRow("GECICI_IRTIFAK_ALAN")
-                    End If
-                    If Not IsDBNull(MyRow("MULKIYET_ALAN")) Then
-                        MyParsel.MulkiyetAlan = MyRow("MULKIYET_ALAN")
-                    End If
-                    If Not IsDBNull(MyRow("DAIMI_IRTIFAK_BEDEL")) Then
-                        MyParsel.IrtifakBedel = MyRow("DAIMI_IRTIFAK_BEDEL")
-                    End If
-                    If Not IsDBNull(MyRow("GECICI_IRTIFAK_BEDEL")) Then
-                        MyParsel.GeciciIrtifakBedel = MyRow("GECICI_IRTIFAK_BEDEL")
-                    End If
-                    If Not IsDBNull(MyRow("MULKIYET_BEDEL")) Then
-                        MyParsel.MulkiyetBedel = MyRow("MULKIYET_BEDEL")
-                    End If
-
-                    Dim MyParselKod As New ParselKod
-                    MyParselKod.Kod = MyRow("KOD").ToString.Trim
-
-                    If Not IsDBNull(MyRow("KADASTRAL_DURUM")) Then
-                        Select Case MyRow("KADASTRAL_DURUM")
-                            Case 1
-                                MyParselKod.KadastralDurum = 1
-                            Case 2
-                                MyParselKod.KadastralDurum = 3
-                            Case 3
-                                MyParselKod.IstimlakDisi = True
-                            Case 4
-                                MyParselKod.KadastralDurum = 1
-                            Case 5
-                                MyParselKod.KadastralDurum = 3
-                            Case 6
-                                MyParselKod.KadastralDurum = 4
-                        End Select
-                    End If
-                    If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
-                        MyParselKod.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
-                    End If
-                    If Not IsDBNull(MyRow("ISTIMLAK_TURU")) Then
-                        MyParselKod.IstimlakTuru = MyRow("ISTIMLAK_TURU")
-                    End If
-                    If Not IsDBNull(MyRow("ISTIMLAK_SERHI")) Then
-                        MyParselKod.IstimlakSerhi = MyRow("ISTIMLAK_SERHI")
-                    End If
-                    If Not IsDBNull(MyRow("DAVA_DOSYASI_DURUMU")) Then
-                        MyParselKod.DavaDurumu10 = MyRow("DAVA_DOSYASI_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("DAVA_DOSYASI_DURUMU_27")) Then
-                        MyParselKod.DavaDurumu27 = MyRow("DAVA_DOSYASI_DURUMU_27")
-                    End If
-                    'If Not IsDBNull(MyRow("ISTIMLAK_DISI_DURUMU")) Then
-                    '    MyParselKod.IstimlakDisi = MyRow("ISTIMLAK_DISI_DURUMU")
-                    'End If
-                    If Not IsDBNull(MyRow("DEVIR_DURUMU")) Then
-                        MyParselKod.DevirDurumu = MyRow("DEVIR_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("PARSEL_ALINMA_DURUMU")) Then
-                        MyParselKod.EdinimDurumu = MyRow("PARSEL_ALINMA_DURUMU")
-                    End If
-                    MyParsel.Kod = MyParselKod
-
-                    LastAda = MyParsel.AdaNo
-                    LastParsel = MyParsel.ParselNo
-                    If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
-                        If MyRow("PARSEL_MALIK_TIPI") = 1 Then
-                            MyMalik = New Kisi(MyRow("MALIK").ToString.Trim)
-                            'MyMalik.MalikTipi = 1
-                        Else
-                            MyMalik = New Kisi(MyRow("MALIK").ToString.Trim, String.Empty)
-                            'MyMalik.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
-                        End If
-                    Else
-                        MyMalik = New Kisi(MyRow("MALIK").ToString.Trim, String.Empty)
-                    End If
-                    MyMalik.Baba = MyRow("BABA").ToString.Trim
-                    If Not IsDBNull(MyRow("TC_KIMLIK_NO")) Then
-                        MyMalik.TCKimlikNo = MyRow("TC_KIMLIK_NO")
-                    End If
-                    If Not IsDBNull(MyRow("HISSE")) Then
-                        If MyRow("HISSE").ToString().Contains("TAM") Then
-                            MyMalik.HissePay = 1
-                            MyMalik.HissePayda = 1
-                        ElseIf MyRow("HISSE").ToString().Contains("VRS") Then
-                            MyMalik.HissePay = 0
-                            MyMalik.HissePayda = 1
-                        Else
-                            If MyRow("HISSE").ToString().Contains("/") Then
-                                Dim RSFRSplit As String() = MyRow("HISSE").ToString().Trim.Split("/")
-                                MyMalik.HissePay = Val(RSFRSplit(0))
-                                MyMalik.HissePayda = Val(RSFRSplit(1))
-                            Else
-                                MyMalik.HissePay = 0
-                                MyMalik.HissePayda = 1
-                            End If
-                        End If
-                    Else
-                        MyMalik.HissePay = 0
-                        MyMalik.HissePayda = 1
-                    End If
-                    If Not IsDBNull(MyRow("TAPUTARIH")) Then
-                        MyMalik.TapuTarihi = MyRow("TAPUTARIH")
-                    End If
-                    MyMalik.Dusunceler = MyRow("DUSUNCELER").ToString.Trim
-
-                    Dim MyMalikKod As New KisiKod
-                    'If Not IsDBNull(MyRow("PARSEL_MALIK_TIPI")) Then
-                    '    MyMalikKod.MalikTipi = MyRow("PARSEL_MALIK_TIPI")
-                    'End If
-                    If Not IsDBNull(MyRow("DAVETIYE_TEBLIG_DURUMU")) Then
-                        MyMalikKod.DavetiyeTebligDurumu = MyRow("DAVETIYE_TEBLIG_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("DAVETIYE_ALINMA_DURUMU")) Then
-                        MyMalikKod.DavetiyeAlinmaDurumu = MyRow("DAVETIYE_ALINMA_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("GORUSME_DURUMU")) Then
-                        MyMalikKod.GorusmeDurumu = MyRow("GORUSME_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("GORUSME_NO")) Then
-                        MyMalikKod.GorusmeNo = MyRow("GORUSME_NO")
-                    End If
-                    If Not IsDBNull(MyRow("GORUSME_TARIHI")) Then
-                        MyMalikKod.GorusmeTarihi = MyRow("GORUSME_TARIHI")
-                    End If
-                    If Not IsDBNull(MyRow("ANLASMA_DURUMU")) Then
-                        MyMalikKod.AnlasmaDurumu = MyRow("ANLASMA_DURUMU")
-                    End If
-                    If Not IsDBNull(MyRow("ANLASMA_TARIHI")) Then
-                        MyMalikKod.AnlasmaTarihi = MyRow("ANLASMA_TARIHI")
-                    End If
-                    If Not IsDBNull(MyRow("ANLASMA_DUSUNCELER")) Then
-                        MyMalikKod.AnlasmaDusunceler = MyRow("ANLASMA_DUSUNCELER")
-                    End If
-                    If Not IsDBNull(MyRow("TESCIL_DURUMU")) Then
-                        MyMalikKod.TescilDurumu = MyRow("TESCIL_DURUMU")
-                    End If
-                    MyMalik.Kod = MyMalikKod
-
-                    MyMalikler.Add(MyMalik)
-                    MyMalik = New Kisi
-                End If
-            Next
-            MyParsel.Malikler = MyMalikler
-            MyParseller.Add(MyParsel)
-        Catch ex As Exception
-            MsgBox(ex.Message)
-        End Try
-
-        Return MyParseller
-    End Function
-
-    Public Function GetMustemilatCollectionV5(_DataTable As DataTable) As Collection
-        Dim MyMustemilatlar As New Collection
-        Dim MyMalik As New Kisi
-        For Each MyRow As DataRow In _DataTable.Rows
-            Dim MyParsel As New Parsel
-            MyParsel.Il = MyRow("IL").ToString
-            MyParsel.Ilce = MyRow("ILCE").ToString
-            MyParsel.Koy = MyRow("KOY").ToString
-            MyParsel.Mahalle = MyRow("MAHALLE").ToString
-            MyParsel.AdaNo = MyRow("ADA").ToString
-            MyParsel.ParselNo = MyRow("PARSEL").ToString
-
-            Dim MyKisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
-
-            Dim MyMustemilat As New Mustemilat
-            MyMustemilat.ParselID = GetParselID(MyParsel)
-            MyMustemilat.SahipID = GetKisiID(MyKisi)
-            'Kisi ID için parsel bilgiside dikkate alınmalıdır. bu haliyle yanlış maliklere id bağlanacaktır.
-            MyKisi = Nothing
-            MyParsel = Nothing
-
-            If Not IsDBNull(MyRow("BIRIM")) Then
-                MyMustemilat.Adet = MyRow("BIRIM")
-            End If
-            MyMustemilat.Tanim = MyRow("TANIM").ToString
-            If Not IsDBNull(MyRow("FIYAT")) Then
-                MyMustemilat.Fiyat = MyRow("FIYAT")
-            End If
-            Select Case MyRow("K_M").ToString.Trim
-                Case "K"
-                    MyMustemilat.Malik = False
-                Case Else
-                    MyMustemilat.Malik = True
-            End Select
-            MyMustemilat.Pay = 1
-            MyMustemilat.Payda = 1
-            MyMustemilat.OdemeID = 0
-
-            MyMustemilatlar.Add(MyMustemilat)
-        Next
-
-        Return MyMustemilatlar
-    End Function
-
-    Public Function GetMevsimlikCollectionV5(_DataTable As DataTable) As Collection
-        Dim MyMevsimlikler As New Collection
-        Dim MyMalik As New Kisi
-        Dim LastAda As Long = -1
-        Dim LastParsel As Long = -1
-        For Each MyRow As DataRow In _DataTable.Rows
-            Dim MyParsel As New Parsel
-            MyParsel.Il = MyRow("IL").ToString
-            MyParsel.Ilce = MyRow("ILCE").ToString
-            MyParsel.Koy = MyRow("KOY").ToString
-            MyParsel.Mahalle = MyRow("MAHALLE").ToString
-            MyParsel.AdaNo = MyRow("ADA").ToString
-            MyParsel.ParselNo = MyRow("PARSEL").ToString
-
-            Dim MyKisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
-
-            Dim MyMevsimlik As New Mevsimlik
-            MyMevsimlik.ParselID = GetParselID(MyParsel)
-            MyMevsimlik.SahipID = GetKisiID(MyKisi)
-            'Kisi ID için parsel bilgiside dikkate alınmalıdır. bu haliyle yanlış maliklere id bağlanacaktır.
-            MyKisi = Nothing
-            MyParsel = Nothing
-
-            If Not IsDBNull(MyRow("HASAR_ALAN")) Then
-                MyMevsimlik.Alan = MyRow("HASAR_ALAN")
-            End If
-            MyMevsimlik.Tanim = MyRow("TANIM").ToString
-            If Not IsDBNull(MyRow("HASAR_BEDEL")) Then
-                MyMevsimlik.Bedel = MyRow("HASAR_BEDEL")
-            End If
-            Select Case MyRow("MK").ToString.Trim
-                Case "K"
-                    MyMevsimlik.Malik = False
-                Case Else
-                    MyMevsimlik.Malik = True
-            End Select
-            If Not IsDBNull(MyRow("HISSE")) Then
-                If MyRow("HISSE").ToString().Contains("TAM") Then
-                    MyMevsimlik.Pay = 1
-                    MyMevsimlik.Payda = 1
-                ElseIf MyRow("HISSE").ToString().Contains("VRS") Then
-                    MyMevsimlik.Pay = 0
-                    MyMevsimlik.Payda = 1
-                Else
-                    If MyRow("HISSE").ToString().Contains("/") Then
-                        Dim RSFRSplit As String() = MyRow("HISSE").ToString().Trim.Split("/")
-                        MyMevsimlik.Pay = Val(RSFRSplit(0))
-                        MyMevsimlik.Payda = Val(RSFRSplit(1))
-                    Else
-                        MyMevsimlik.Pay = 0
-                        MyMevsimlik.Payda = 1
-                    End If
-                End If
-            Else
-                MyMevsimlik.Pay = 0
-                MyMevsimlik.Payda = 1
-            End If
-
-            MyMevsimlik.OdemeID = 0
-
-            MyMevsimlikler.Add(MyMevsimlik)
-        Next
-
-        Return MyMevsimlikler
-    End Function
-
-#End Region
 
 #Region "Get Collections"
 
@@ -966,7 +579,6 @@ Public Class DB
                 '    MyParsel.kamuodeme = MyRow("ODEME_ID")
                 'End If
 
-
                 If Not WithOutCode Then
                     Dim MyParselKod As New ParselKod
                     MyParselKod.Kod = MyRow("KOD").ToString
@@ -1081,10 +693,10 @@ Public Class DB
                 MyMustemilat.ID = MyRow("ID")
             End If
             If Not IsDBNull(MyRow("PARSEL_ID")) Then
-                MyMustemilat.ParselID = MyRow("PARSEL_ID")
+                MyMustemilat.ParselGUID = MyRow("PARSEL_GLOBALID")
             End If
             If Not IsDBNull(MyRow("SAHIP_ID")) Then
-                MyMustemilat.SahipID = MyRow("SAHIP_ID")
+                MyMustemilat.SahipGUID = MyRow("SAHIP_GLOBALID")
             End If
             MyMustemilat.Tanim = MyRow("TANIM").ToString
             If Not IsDBNull(MyRow("ADET")) Then
@@ -1102,8 +714,8 @@ Public Class DB
             If Not IsDBNull(MyRow("PAYDA")) Then
                 MyMustemilat.Payda = MyRow("PAYDA")
             End If
-            If Not IsDBNull(MyRow("ODEME_ID")) Then
-                MyMustemilat.OdemeID = MyRow("ODEME_ID")
+            If Not IsDBNull(MyRow("ODEME_GLOBALID")) Then
+                MyMustemilat.OdemeGUID = MyRow("ODEME_GLOBALID")
             End If
             MyMustemilatlar.Add(MyMustemilat)
         Next
@@ -1117,11 +729,11 @@ Public Class DB
             If Not IsDBNull(MyRow("ID")) Then
                 MyMevsimlik.ID = MyRow("ID")
             End If
-            If Not IsDBNull(MyRow("PARSEL_ID")) Then
-                MyMevsimlik.ParselID = MyRow("PARSEL_ID")
+            If Not IsDBNull(MyRow("PARSEL_GLOBALID")) Then
+                MyMevsimlik.ParselGUID = MyRow("PARSEL_GLOBALID")
             End If
-            If Not IsDBNull(MyRow("SAHIP_ID")) Then
-                MyMevsimlik.SahipID = MyRow("SAHIP_ID")
+            If Not IsDBNull(MyRow("SAHIP_GLOBALID")) Then
+                MyMevsimlik.SahipGUID = MyRow("SAHIP_GLOBALID")
             End If
             MyMevsimlik.Tanim = MyRow("TANIM").ToString
             If Not IsDBNull(MyRow("ALAN")) Then
@@ -1139,8 +751,8 @@ Public Class DB
             If Not IsDBNull(MyRow("PAYDA")) Then
                 MyMevsimlik.Payda = MyRow("PAYDA")
             End If
-            If Not IsDBNull(MyRow("ODEME_ID")) Then
-                MyMevsimlik.OdemeID = MyRow("ODEME_ID")
+            If Not IsDBNull(MyRow("ODEME_GLOBALID")) Then
+                MyMevsimlik.OdemeGUID = MyRow("ODEME_GLOBALID")
             End If
             MyMevsimlikler.Add(MyMevsimlik)
         Next
@@ -1154,8 +766,11 @@ Public Class DB
             If Not IsDBNull(MyRow("ID")) Then
                 MyDavaAcele.ID = MyRow("ID")
             End If
-            If Not IsDBNull(MyRow("PARSEL_ID")) Then
-                MyDavaAcele.ParselID = MyRow("PARSEL_ID")
+            If Not IsDBNull(MyRow("GLOBALID")) Then
+                MyDavaAcele.GUID = MyRow("GLOBALID")
+            End If
+            If Not IsDBNull(MyRow("PARSEL_GLOBALID")) Then
+                MyDavaAcele.ParselGUID = MyRow("PARSEL_GLOBALID")
             End If
             MyDavaAcele.Mahkeme = MyRow("MAHKEME").ToString
             MyDavaAcele.EsasNo = MyRow("ESAS_NO").ToString
@@ -1199,8 +814,11 @@ Public Class DB
             If Not IsDBNull(MyRow("ID")) Then
                 MyDavaTescil.ID = MyRow("ID")
             End If
-            If Not IsDBNull(MyRow("PARSEL_ID")) Then
-                MyDavaTescil.ParselID = MyRow("PARSEL_ID")
+            If Not IsDBNull(MyRow("GLOBALID")) Then
+                MyDavaTescil.GUID = MyRow("GLOBALID")
+            End If
+            If Not IsDBNull(MyRow("PARSEL_GLOBALID")) Then
+                MyDavaTescil.ParselGUID = MyRow("PARSEL_GLOBALID")
             End If
             MyDavaTescil.Mahkeme = MyRow("MAHKEME").ToString
             MyDavaTescil.EsasNo = MyRow("ESAS_NO").ToString
@@ -1244,14 +862,14 @@ Public Class DB
             If Not IsDBNull(MyRow("ID")) Then
                 MyOdeme.ID = MyRow("ID")
             End If
-            If Not IsDBNull(MyRow("PARSEL_ID")) Then
-                MyOdeme.ParselID = MyRow("PARSEL_ID")
+            If Not IsDBNull(MyRow("PARSEL_GLOBALID")) Then
+                MyOdeme.ParselGUID = MyRow("PARSEL_GLOBALID")
             End If
-            If Not IsDBNull(MyRow("KISI_ID")) Then
-                MyOdeme.KisiID = MyRow("KISI_ID")
+            If Not IsDBNull(MyRow("KISI_GLOBALID")) Then
+                MyOdeme.KisiGUID = MyRow("KISI_GLOBALID")
             End If
-            If Not IsDBNull(MyRow("ONAY_ID")) Then
-                MyOdeme.OnayID = MyRow("ONAY_ID")
+            If Not IsDBNull(MyRow("ONAY_GLOBALID")) Then
+                MyOdeme.OnayGUID = MyRow("ONAY_GLOBALID")
             End If
             If Not IsDBNull(MyRow("ODENEN_BEDEL")) Then
                 MyOdeme.Tutar = MyRow("ODENEN_BEDEL")
@@ -1460,16 +1078,16 @@ Public Class DB
         Return MyObject
     End Function
 
-    Public Function GetProje(ProjeID As Long) As Proje
+    Public Function GetProje(ProjeGUID As String) As Proje
         Dim MyObject As New Proje
         Try
             Select Case ConnectionInfo.ConnectionType
                 Case Connections.OleDbConnection
-                    MyObject = MyOle.GetProje(ProjeID)
+                    MyObject = MyOle.GetProje(ProjeGUID)
                 Case Connections.SqlConnection
-                    MyObject = MySQL.GetProje(ProjeID)
+                    MyObject = MySQL.GetProje(ProjeGUID)
                 Case Connections.PgSqlConnection
-                    MyObject = MyPgSQL.GetProje(ProjeID)
+                    MyObject = MyPgSQL.GetProje(ProjeGUID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1477,16 +1095,16 @@ Public Class DB
         Return MyObject
     End Function
 
-    Public Function GetProjeDetay(ProjeID As Long) As ProjeDetay
+    Public Function GetProjeDetay(ProjeGUID As String) As ProjeDetay
         Dim MyObject As New ProjeDetay
         Try
             Select Case ConnectionInfo.ConnectionType
                 Case Connections.OleDbConnection
-                    MyObject = MyOle.GetProjeDetay(ProjeID)
+                    MyObject = MyOle.GetProjeDetay(ProjeGUID)
                 Case Connections.SqlConnection
-                    MyObject = MySQL.GetProjeDetay(ProjeID)
+                    MyObject = MySQL.GetProjeDetay(ProjeGUID)
                 Case Connections.PgSqlConnection
-                    MyObject = MyPgSQL.GetProjeDetay(ProjeID)
+                    MyObject = MyPgSQL.GetProjeDetay(ProjeGUID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1511,6 +1129,23 @@ Public Class DB
         Return MyObject
     End Function
 
+    Public Function GetParsel(ParselGUID As String) As Parsel
+        Dim MyObject As New Parsel
+        Try
+            Select Case ConnectionInfo.ConnectionType
+                Case Connections.OleDbConnection
+                    MyObject = MyOle.GetParsel(ParselGUID)
+                Case Connections.SqlConnection
+                    MyObject = MySQL.GetParsel(ParselGUID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetParsel(ParselGUID)
+            End Select
+        Catch ex As Exception
+            'MyObject = Nothing
+        End Try
+        Return MyObject
+    End Function
+
     Public Function GetParselKod(ParselID As Long) As ParselKod
         Dim MyObject As New ParselKod
         Try
@@ -1527,6 +1162,24 @@ Public Class DB
         End Try
         Return MyObject
     End Function
+
+    Public Function GetParselKod(ParselGUID As String) As ParselKod
+        Dim MyObject As New ParselKod
+        Try
+            Select Case ConnectionInfo.ConnectionType
+                Case Connections.OleDbConnection
+                    MyObject = MyOle.GetParselKod(ParselGUID)
+                Case Connections.SqlConnection
+                    MyObject = MySQL.GetParselKod(ParselGUID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetParselKod(ParselGUID)
+            End Select
+        Catch ex As Exception
+            'MyObject = Nothing
+        End Try
+        Return MyObject
+    End Function
+
 
     Public Function GetParselDetay(ParselID As Long) As ParselDetay
         Dim MyObject As New ParselDetay
@@ -1572,6 +1225,23 @@ Public Class DB
                     MyObject = MySQL.GetKisi(KisiID)
                 Case Connections.PgSqlConnection
                     MyObject = MyPgSQL.GetKisi(KisiID)
+            End Select
+        Catch ex As Exception
+            'MyObject = Nothing
+        End Try
+        Return MyObject
+    End Function
+
+    Public Function GetKisi(KisiGUID As String) As Kisi
+        Dim MyObject As New Kisi
+        Try
+            Select Case ConnectionInfo.ConnectionType
+                Case Connections.OleDbConnection
+                    MyObject = MyOle.GetKisi(KisiGUID)
+                Case Connections.SqlConnection
+                    MyObject = MySQL.GetKisi(KisiGUID)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKisi(KisiGUID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1834,16 +1504,50 @@ Public Class DB
         Return MyObject
     End Function
 
-    Public Function GetProjeID(_Proje As Proje) As Long
+    Public Function GetParselGUID(_Parsel As Parsel) As String
+        Dim MyObject As String = String.Empty
+        Try
+            Select Case ConnectionInfo.ConnectionType
+                Case Connections.OleDbConnection
+                    MyObject = MyOle.GetParselGUID(_Parsel)
+                Case Connections.SqlConnection
+                    MyObject = MySQL.GetParselID(_Parsel)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetParselID(_Parsel)
+            End Select
+        Catch ex As Exception
+            'MyObject = Nothing
+        End Try
+        Return MyObject
+    End Function
+
+    Public Function GetKisiGUID(_Kisi As Kisi) As String
+        Dim MyObject As String = String.Empty
+        Try
+            Select Case ConnectionInfo.ConnectionType
+                Case Connections.OleDbConnection
+                    MyObject = MyOle.GetKisiGUID(_Kisi)
+                Case Connections.SqlConnection
+                    MyObject = MySQL.GetKisiID(_Kisi)
+                Case Connections.PgSqlConnection
+                    MyObject = MyPgSQL.GetKisiID(_Kisi)
+            End Select
+        Catch ex As Exception
+            'MyObject = Nothing
+        End Try
+        Return MyObject
+    End Function
+
+    Public Function GetProjeGUID(_Proje As Proje) As Long
         Dim MyObject As Long
         Try
             Select Case ConnectionInfo.ConnectionType
                 Case Connections.OleDbConnection
-                    MyObject = MyOle.GetProjeID(_Proje)
+                    MyObject = MyOle.GetProjeGUID(_Proje)
                 Case Connections.SqlConnection
-                    MyObject = MySQL.GetProjeID(_Proje)
+                    MyObject = MySQL.GetProjeGUID(_Proje)
                 Case Connections.PgSqlConnection
-                    MyObject = MyPgSQL.GetProjeID(_Proje)
+                    MyObject = MyPgSQL.GetProjeGUID(_Proje)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1943,9 +1647,9 @@ Public Class DB
                 Case Connections.OleDbConnection
                     'MyObject = MyOle.GetUser(_Connection, _User)
                 Case Connections.SqlConnection
-                    MyObject = MySQL.GetUser(_Connection, _User)
+                    MyObject = MySQL.GetUser(_User)
                 Case Connections.PgSqlConnection
-                    MyObject = MyPgSQL.GetUser(_Connection, _User)
+                    MyObject = MyPgSQL.GetUser(_User)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -1979,7 +1683,7 @@ Public Class DB
                 Case Connections.SqlConnection
                     MyObject = MySQL.GetMulkiyet(KisiID, MulkiyetID, GetOption)
                 Case Connections.PgSqlConnection
-                    MyObject = MyPgSQL.GetMulkiyet(KisiID, MulkiyetID, GetOption)
+                    MyObject = MyPgSQL.GetMulkiyet(KisiID, MulkiyetID)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -2783,4 +2487,3 @@ Public Class DB
 #End Region
 
 End Class
-
