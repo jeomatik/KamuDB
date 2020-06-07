@@ -218,56 +218,28 @@ Public Class Conversion
         Return MyMalik
     End Function
 
-    Public Function GetMustemilatCollectionV4(_MustemilatTable As DataTable) As Collection
-        Dim MyMustemilatlar As New Collection
-        Dim MyMalik As New Kisi
+    Public Function GetMustemilatCollectionV4(_MustemilatTable As DataTable, _Parseller As Collection) As Collection
+        Dim Mustemilatlar As New Collection
         For Each MyRow As DataRow In _MustemilatTable.Rows
-            Dim MyParsel As New Parsel With {
-                .Il = MyRow("IL").ToString,
-                .Ilce = MyRow("ILCE").ToString,
-                .Koy = MyRow("KOY").ToString,
-                .Mahalle = MyRow("MAHALLE").ToString,
-                .AdaNo = MyRow("ADA").ToString,
-                .ParselNo = MyRow("PARSEL").ToString
+            Dim _Mustemilat As New Mustemilat With {
+                .Pay = 1,
+                .Payda = 1,
+                .OdemeGUID = "",
+                .Tanim = MyRow("TANIM").ToString
             }
-
-            Dim MyMustemilat As New Mustemilat With {
-                .ParselGUID = GetParselGUID(MyParsel)
-            }
-
-            Dim MyKisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
-            MyMustemilat.SahipGUID = GetKisiGUID(MyKisi)
-
             If Not IsDBNull(MyRow("BIRIM")) Then
-                MyMustemilat.Adet = MyRow("BIRIM")
+                _Mustemilat.Adet = MyRow("BIRIM")
             End If
-            MyMustemilat.Tanim = MyRow("TANIM").ToString
             If Not IsDBNull(MyRow("FIYAT")) Then
-                MyMustemilat.Fiyat = MyRow("FIYAT")
+                _Mustemilat.Fiyat = MyRow("FIYAT")
             End If
             Select Case MyRow("K_M").ToString.Trim
                 Case "K"
-                    MyMustemilat.Malik = False
+                    _Mustemilat.Malik = False
                 Case Else
-                    MyMustemilat.Malik = True
+                    _Mustemilat.Malik = True
             End Select
-            MyMustemilat.Pay = 1
-            MyMustemilat.Payda = 1
-            MyMustemilat.OdemeGUID = 0
-
-            MyMustemilatlar.Add(MyMustemilat)
-        Next
-
-        Return MyMustemilatlar
-    End Function
-
-    Public Function GetMevsimlikCollectionV4(_DataTable As DataTable) As Collection
-        Dim MyMevsimlikler As New Collection
-        Dim MyMalik As New Kisi
-        Dim LastAda As Long = -1
-        Dim LastParsel As Long = -1
-        For Each MyRow As DataRow In _DataTable.Rows
-            Dim MyParsel As New Parsel With {
+            Dim _Parsel As New Parsel With {
                 .Il = MyRow("IL").ToString,
                 .Ilce = MyRow("ILCE").ToString,
                 .Koy = MyRow("KOY").ToString,
@@ -275,59 +247,101 @@ Public Class Conversion
                 .AdaNo = MyRow("ADA").ToString,
                 .ParselNo = MyRow("PARSEL").ToString
             }
+            Dim _Kisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
+            _Mustemilat.SahipGUID = GetKisiGUID(_Kisi, _Parsel, _Parseller, _Mustemilat.Malik)
+            _Mustemilat.ParselGUID = GetParselGUID(_Parsel, _Parseller)
+            Mustemilatlar.Add(_Mustemilat)
+        Next
+        Return Mustemilatlar
+    End Function
 
-            Dim MyKisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
-
-            Dim MyMevsimlik As New Mevsimlik
-            '.GUID = Guid.NewGuid().ToString("N"),
-            '    .ParselGUID = GetParselID(MyParsel),
-            '    .SahipGUID = GetKisiID(MyKisi)
-
-            'Kisi ID için parsel bilgiside dikkate alınmalıdır. bu haliyle yanlış maliklere id bağlanacaktır.
-            MyKisi = Nothing
-            MyParsel = Nothing
-
-            If Not IsDBNull(MyRow("HASAR_ALAN")) Then
-                MyMevsimlik.Alan = MyRow("HASAR_ALAN")
-            End If
-            MyMevsimlik.Tanim = MyRow("TANIM").ToString
-            If Not IsDBNull(MyRow("HASAR_BEDEL")) Then
-                MyMevsimlik.Bedel = MyRow("HASAR_BEDEL")
-            End If
-            Select Case MyRow("MK").ToString.Trim
-                Case "K"
-                    MyMevsimlik.Malik = False
-                Case Else
-                    MyMevsimlik.Malik = True
-            End Select
+    Public Function GetMevsimlikCollectionV4(_MevsimlikTable As DataTable, _Parseller As Collection) As Collection
+        Dim Mevsimlikler As New Collection
+        For Each MyRow As DataRow In _MevsimlikTable.Rows
+            Dim _Mevsimlik As New Mevsimlik With {
+                .OdemeGUID = "",
+                .Tanim = MyRow("TANIM").ToString
+            }
             If Not IsDBNull(MyRow("HISSE")) Then
                 If MyRow("HISSE").ToString().Contains("TAM") Then
-                    MyMevsimlik.Pay = 1
-                    MyMevsimlik.Payda = 1
+                    _Mevsimlik.Pay = 1
+                    _Mevsimlik.Payda = 1
                 ElseIf MyRow("HISSE").ToString().Contains("VRS") Then
-                    MyMevsimlik.Pay = 0
-                    MyMevsimlik.Payda = 1
+                    _Mevsimlik.Pay = 0
+                    _Mevsimlik.Payda = 1
                 Else
                     If MyRow("HISSE").ToString().Contains("/") Then
                         Dim RSFRSplit As String() = MyRow("HISSE").ToString().Trim.Split("/")
-                        MyMevsimlik.Pay = Val(RSFRSplit(0))
-                        MyMevsimlik.Payda = Val(RSFRSplit(1))
+                        _Mevsimlik.Pay = Val(RSFRSplit(0))
+                        _Mevsimlik.Payda = Val(RSFRSplit(1))
                     Else
-                        MyMevsimlik.Pay = 0
-                        MyMevsimlik.Payda = 1
+                        _Mevsimlik.Pay = 0
+                        _Mevsimlik.Payda = 1
                     End If
                 End If
             Else
-                MyMevsimlik.Pay = 0
-                MyMevsimlik.Payda = 1
+                _Mevsimlik.Pay = 0
+                _Mevsimlik.Payda = 1
             End If
-
-            MyMevsimlik.OdemeGUID = 0
-
-            MyMevsimlikler.Add(MyMevsimlik)
+            If Not IsDBNull(MyRow("HASAR_ALAN")) Then
+                _Mevsimlik.Alan = MyRow("HASAR_ALAN")
+            End If
+            If Not IsDBNull(MyRow("HASAR_BEDEL")) Then
+                _Mevsimlik.Bedel = MyRow("HASAR_BEDEL")
+            End If
+            Select Case MyRow("MK").ToString.Trim
+                Case "K"
+                    _Mevsimlik.Malik = False
+                Case Else
+                    _Mevsimlik.Malik = True
+            End Select
+            Dim _Parsel As New Parsel With {
+                .Il = MyRow("IL").ToString,
+                .Ilce = MyRow("ILCE").ToString,
+                .Koy = MyRow("KOY").ToString,
+                .Mahalle = MyRow("MAHALLE").ToString,
+                .AdaNo = MyRow("ADA").ToString,
+                .ParselNo = MyRow("PARSEL").ToString
+            }
+            Dim _Kisi As New Kisi(MyRow("SAHIP").ToString, MyRow("BABA").ToString, 0)
+            _Mevsimlik.SahipGUID = GetKisiGUID(_Kisi, _Parsel, _Parseller, _Mevsimlik.Malik)
+            _Mevsimlik.ParselGUID = GetParselGUID(_Parsel, _Parseller)
+            Mevsimlikler.Add(_Mevsimlik)
         Next
+        Return Mevsimlikler
+    End Function
 
-        Return MyMevsimlikler
+    Private Function GetParselGUID(_Parsel As Parsel, _Parseller As Collection) As String
+        Dim ParselGUID As String = String.Empty
+        For Each MyParsel As Parsel In _Parseller
+            If MyParsel.Equals(_Parsel) Then
+                ParselGUID = _Parsel.GUID
+                Exit For
+            End If
+        Next
+        Return ParselGUID
+    End Function
+
+    Private Function GetKisiGUID(_Kisi As Kisi, _Parsel As Parsel, _Parseller As Collection, IsMalik As Boolean) As String
+        Dim MyKisiGUID As String = String.Empty
+        If IsMalik Then
+            For Each MyKisi As Kisi In _Parsel.Malikler
+                If MyKisi.Equals(_Kisi) Then
+                    MyKisiGUID = MyKisi.GUID
+                    Exit For
+                End If
+            Next
+        Else
+            For Each MyParsel As Parsel In _Parseller
+                For Each MyKisi As Kisi In MyParsel.Malikler
+                    If MyKisi.Equals(_Kisi) Then
+                        MyKisiGUID = MyKisi.GUID
+                        Exit For
+                    End If
+                Next
+            Next
+        End If
+        Return MyKisiGUID
     End Function
 
 #End Region

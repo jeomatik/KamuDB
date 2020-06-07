@@ -31,23 +31,30 @@ Public Class Create
             End Try
         End Using
 
-        Dim MyParsellerTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM PARSELLER ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
-        Dim MyParsellerCollection As Collection = MyKamuConversion.GetParsellerCollectionV4(MyParsellerTable, strProjectGUID)
-        Dim StatusParsel As Boolean = UpdateData(MyParsellerCollection, _ConnectionInfo6)
+        Dim StatusParsel As Boolean
+        Dim StatusMustemilat As Boolean
+        Dim StatusMevsimlik As Boolean
 
-        Dim MyMustemilatTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM MUSTEMILAT ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
-        Dim MyMustemilatCollection As Collection = MyKamuConversion.GetMustemilatCollectionV4(MyMustemilatTable)
-        Dim MyMevsimlikTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM MEVSIMLIK ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
-        Dim MyMevsimlikCollection As Collection = MyKamuConversion.GetMevsimlikCollectionV4(MyMevsimlikTable)
-        'Dim StatusMustemilat As Boolean = UpdateData(MyMustemilatCollection, MyMevsimlikCollection,MyParsellerCollection, _ConnectionInfo6)
+        Dim Parseller As New Collection
 
-        MyParsellerCollection.Clear()
-        MyMustemilatCollection.Clear()
-        MyMevsimlikCollection.Clear()
+        Using MyParsellerTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM PARSELLER ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
+            Parseller = MyKamuConversion.GetParsellerCollectionV4(MyParsellerTable, strProjectGUID)
+            StatusParsel = UpdateParselData(Parseller, _ConnectionInfo6)
+        End Using
 
-        Dim StatusMustemilat As Boolean = True
+        Using MyMustemilatTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM MUSTEMILAT ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
+            Dim Mustemilatlar As Collection = MyKamuConversion.GetMustemilatCollectionV4(MyMustemilatTable, Parseller)
+            StatusMustemilat = UpdateMustemilatData(Mustemilatlar, _ConnectionInfo6)
+        End Using
 
-        If StatusParsel And StatusMustemilat Then
+        Using MyMevsimlikTable As DataTable = MyKamuDB4.GetDataTable("SELECT * FROM MEVSIMLIK ORDER BY IL, ILCE, KOY, MAHALLE, ADA, PARSEL;")
+            Dim Mevsimlikler As Collection = MyKamuConversion.GetMevsimlikCollectionV4(MyMevsimlikTable, Parseller)
+            StatusMevsimlik = UpdateMevsimlikData(Mevsimlikler, _ConnectionInfo6)
+        End Using
+
+        Parseller.Clear()
+
+        If StatusParsel And StatusMustemilat And StatusMevsimlik Then
             MyStatus = True
             Using connection As New OleDbConnection(_ConnectionInfo6.ConnectionString)
                 If Not connection.State = ConnectionState.Open Then connection.Open()
@@ -66,8 +73,6 @@ Public Class Create
 
             End Using
         End If
-
-
 
         'MyParsellerTable = Nothing
         'MyMustemilatTable = Nothing
@@ -111,7 +116,7 @@ Public Class Create
 
         MyParsellerCollection = MyKamuSourceDB.DefineVerasetDurumu(MyParsellerCollection)
 
-        Dim StatusParsel As Boolean = UpdateData(MyParsellerCollection, _TargetConnectionInfo)
+        Dim StatusParsel As Boolean = UpdateParselData(MyParsellerCollection, _TargetConnectionInfo)
         'MyParsellerCollection = Nothing
 
         Using MyParselConversionTable As DataTable = MyKamuTargetDB.GetDataTable("SELECT ID, ESKI_ID FROM PARSEL")
@@ -130,7 +135,9 @@ Public Class Create
                         'MyParselConversionTable = Nothing
                         'MyKisiConversionTable = Nothing
 
-                        Dim StatusMustemilat As Boolean = UpdateData(MyMustemilatCollection, MyMevsimlikCollection, _TargetConnectionInfo)
+                        Dim StatusMustemilat As Boolean = UpdateMustemilatData(MyMustemilatCollection, _TargetConnectionInfo)
+                        Dim StatusMevsimlik As Boolean = UpdateMustemilatData(MyMevsimlikCollection, _TargetConnectionInfo)
+
                         'MyMustemilatCollection = Nothing
                         'MyMevsimlikCollection = Nothing
 
@@ -187,14 +194,14 @@ Public Class Create
         End Using
     End Sub
 
-    Private Function UpdateData(ParselCollection As Collection, Connection As ConnectionInfo) As Boolean
+    Private Function UpdateParselData(Parseller As Collection, Connection As ConnectionInfo) As Boolean
         Dim MyObject As Boolean
         Try
             Select Case Connection.ConnectionType
                 Case Connections.OleDbConnection
-                    MyObject = UpdateDataOleDb(ParselCollection, Connection.ConnectionString)
+                    MyObject = UpdateParselOleDb(Parseller, Connection.ConnectionString)
                 Case Connections.SqlConnection
-                    MyObject = UpdateDataSQL(ParselCollection, Connection.ConnectionString)
+                    MyObject = UpdateParselSQL(Parseller, Connection.ConnectionString)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -202,14 +209,14 @@ Public Class Create
         Return MyObject
     End Function
 
-    Private Function UpdateData(MustemilatCollection As Collection, MevsimlikCollection As Collection, Connection As ConnectionInfo) As Boolean
+    Private Function UpdateMustemilatData(Mustemilatlar As Collection, Connection As ConnectionInfo) As Boolean
         Dim MyObject As Boolean
         Try
             Select Case Connection.ConnectionType
                 Case Connections.OleDbConnection
-                    MyObject = UpdateDataOleDb(MustemilatCollection, MevsimlikCollection, Connection.ConnectionString)
+                    MyObject = UpdateMustemilatOleDb(Mustemilatlar, Connection.ConnectionString)
                 Case Connections.SqlConnection
-                    MyObject = UpdateDataSQL(MustemilatCollection, MevsimlikCollection, Connection.ConnectionString)
+                    MyObject = UpdateMustemilatSQL(Mustemilatlar, Connection.ConnectionString)
             End Select
         Catch ex As Exception
             'MyObject = Nothing
@@ -217,7 +224,22 @@ Public Class Create
         Return MyObject
     End Function
 
-    Private Function UpdateDataOleDb(ParselCollection As Collection, _ConnectionString As String) As Boolean
+    Private Function UpdateMevsimlikData(Mevsimlikler As Collection, Connection As ConnectionInfo) As Boolean
+        Dim MyObject As Boolean
+        Try
+            Select Case Connection.ConnectionType
+                Case Connections.OleDbConnection
+                    MyObject = UpdateMevsimlikOleDb(Mevsimlikler, Connection.ConnectionString)
+                Case Connections.SqlConnection
+                    MyObject = UpdateMevsimlikSQL(Mevsimlikler, Connection.ConnectionString)
+            End Select
+        Catch ex As Exception
+            'MyObject = Nothing
+        End Try
+        Return MyObject
+    End Function
+
+    Private Function UpdateParselOleDb(ParselCollection As Collection, _ConnectionString As String) As Boolean
         Dim MyStatus As Boolean = False
         Try
             Dim MyKamuConnection As New OleDb.OleDbConnection(_ConnectionString)
@@ -523,7 +545,7 @@ Public Class Create
         Return MyStatus
     End Function
 
-    Private Function UpdateDataSQL(ParselCollection As Collection, _ConnectionString As String) As Boolean
+    Private Function UpdateParselSQL(ParselCollection As Collection, _ConnectionString As String) As Boolean
         Dim MyStatus As Boolean = False
         Try
             Dim MyKamuConnection As New SqlConnection(_ConnectionString)
@@ -748,7 +770,7 @@ Public Class Create
         Return MyStatus
     End Function
 
-    Private Function UpdateDataOleDb(MustemilatCollection As Collection, MevsimlikCollection As Collection, _ConnectionString As String) As Boolean
+    Private Function UpdateMustemilatOleDb(Mustemilatlar As Collection, _ConnectionString As String) As Boolean
         Dim MyStatus As Boolean = False
         Using MyKamuConnection As New OleDbConnection(_ConnectionString)
             Try
@@ -760,7 +782,7 @@ Public Class Create
                     Using MyMustemilatTable As New DataTable
                         Try
                             MyMustemilatDataAdapter.Fill(MyMustemilatTable)
-                            UpdateMustemilatTable(MustemilatCollection, MyMustemilatTable)
+                            UpdateMustemilatTable(Mustemilatlar, MyMustemilatTable)
                             Using MyMustemilatCommandBuilder As New OleDb.OleDbCommandBuilder With {.DataAdapter = MyMustemilatDataAdapter}
                                 MyMustemilatDataAdapter.Update(MyMustemilatTable)
                             End Using
@@ -770,11 +792,29 @@ Public Class Create
                     End Using
                 End Using
 
+                MyStatus = True
+            Catch ex As Exception
+                MsgBox(ex.Message)
+            Finally
+                MyKamuConnection.Close()
+            End Try
+        End Using
+        Return MyStatus
+    End Function
+
+    Private Function UpdateMevsimlikOleDb(Mevsimlikler As Collection, _ConnectionString As String) As Boolean
+        Dim MyStatus As Boolean = False
+        Using MyKamuConnection As New OleDbConnection(_ConnectionString)
+            Try
+                If Not MyKamuConnection.State = ConnectionState.Open Then
+                    MyKamuConnection.Open()
+                End If
+
                 Using MyMevsimlikDataAdapter As OleDbDataAdapter = New OleDbDataAdapter(New OleDbCommand("SELECT * FROM MEVSIMLIK", MyKamuConnection))
                     Using MyMevsimlikTable As New DataTable
                         Try
                             MyMevsimlikDataAdapter.Fill(MyMevsimlikTable)
-                            UpdateMevsimlikTable(MevsimlikCollection, MyMevsimlikTable)
+                            UpdateMevsimlikTable(Mevsimlikler, MyMevsimlikTable)
                             Using MyMevsimlikCommandBuilder As New OleDbCommandBuilder With {.DataAdapter = MyMevsimlikDataAdapter}
                                 MyMevsimlikDataAdapter.Update(MyMevsimlikTable)
                             End Using
@@ -794,7 +834,7 @@ Public Class Create
         Return MyStatus
     End Function
 
-    Private Function UpdateDataSQL(MustemilatCollection As Collection, MevsimlikCollection As Collection, _ConnectionString As String) As Boolean
+    Private Function UpdateMustemilatSQL(Mustemilatlar As Collection, _ConnectionString As String) As Boolean
         Dim MyStatus As Boolean = False
         Try
             Dim MyKamuConnection As New SqlConnection(_ConnectionString)
@@ -805,50 +845,7 @@ Public Class Create
             Dim MyMustemilatTable As New DataTable
             MyMustemilatDataAdapter.Fill(MyMustemilatTable)
 
-            Dim MyQueryStringMevsimlik As String = "SELECT * FROM MEVSIMLIK"
-            Dim MyMevsimlikDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryStringMevsimlik, MyKamuConnection))
-            Dim MyMevsimlikTable As New DataTable
-            MyMevsimlikDataAdapter.Fill(MyMevsimlikTable)
-
-            UpdateMustemilatTable(MustemilatCollection, MyMustemilatTable)
-
-            UpdateMevsimlikTable(MevsimlikCollection, MyMevsimlikTable)
-
-            'Try
-            '    For Each _Mustemilat As Mustemilat In MustemilatCollection
-            '        Dim MyMustemilatRow As DataRow = MyMustemilatTable.NewRow()
-            '        MyMustemilatRow("PARSEL_ID") = _Mustemilat.ParselID
-            '        MyMustemilatRow("SAHIP_ID") = _Mustemilat.SahipID
-            '        MyMustemilatRow("TANIM") = _Mustemilat.Tanim
-            '        MyMustemilatRow("ADET") = _Mustemilat.Adet
-            '        MyMustemilatRow("FIYAT") = _Mustemilat.Fiyat
-            '        MyMustemilatRow("MALIK") = _Mustemilat.Malik
-            '        MyMustemilatRow("PAY") = _Mustemilat.Pay
-            '        MyMustemilatRow("PAYDA") = _Mustemilat.Payda
-            '        MyMustemilatRow("ODEME_ID") = _Mustemilat.OdemeID
-            '        MyMustemilatTable.Rows.Add(MyMustemilatRow)
-            '    Next
-            'Catch ex As Exception
-            '    MsgBox(ex.Message)
-            'End Try
-
-            'Try
-            '    For Each _Mevsimlik As Mevsimlik In MevsimlikCollection
-            '        Dim MyMevsimlikRow As DataRow = MyMevsimlikTable.NewRow()
-            '        MyMevsimlikRow("PARSEL_ID") = _Mevsimlik.ParselID
-            '        MyMevsimlikRow("SAHIP_ID") = _Mevsimlik.SahipID
-            '        MyMevsimlikRow("TANIM") = _Mevsimlik.Tanim
-            '        MyMevsimlikRow("ALAN") = _Mevsimlik.Alan
-            '        MyMevsimlikRow("BEDEL") = _Mevsimlik.Bedel
-            '        MyMevsimlikRow("MALIK") = _Mevsimlik.Malik
-            '        MyMevsimlikRow("PAY") = _Mevsimlik.Pay
-            '        MyMevsimlikRow("PAYDA") = _Mevsimlik.Payda
-            '        MyMevsimlikRow("ODEME_ID") = _Mevsimlik.OdemeID
-            '        MyMevsimlikTable.Rows.Add(MyMevsimlikRow)
-            '    Next
-            'Catch ex As Exception
-            '    MsgBox(ex.Message)
-            'End Try
+            UpdateMustemilatTable(Mustemilatlar, MyMustemilatTable)
 
             Try
                 Dim MyMustemilatCommandBuilder As New SqlCommandBuilder With {
@@ -861,6 +858,28 @@ Public Class Create
             Catch ex As Exception
                 MsgBox(ex.Message)
             End Try
+
+            MyKamuConnection.Close()
+            MyKamuConnection = Nothing
+            MyStatus = True
+        Catch ex As Exception
+            MsgBox(ex.Message)
+        End Try
+        Return MyStatus
+    End Function
+
+    Private Function UpdateMevsimlikSQL(Mevsimlikler As Collection, _ConnectionString As String) As Boolean
+        Dim MyStatus As Boolean = False
+        Try
+            Dim MyKamuConnection As New SqlConnection(_ConnectionString)
+            MyKamuConnection.Open()
+
+            Dim MyQueryStringMevsimlik As String = "SELECT * FROM MEVSIMLIK"
+            Dim MyMevsimlikDataAdapter As SqlDataAdapter = New SqlDataAdapter(New SqlCommand(MyQueryStringMevsimlik, MyKamuConnection))
+            Dim MyMevsimlikTable As New DataTable
+            MyMevsimlikDataAdapter.Fill(MyMevsimlikTable)
+
+            UpdateMevsimlikTable(Mevsimlikler, MyMevsimlikTable)
 
             Try
                 Dim MyMevsimlikCommandBuilder As New SqlCommandBuilder With {
