@@ -43,7 +43,7 @@
     <OptionInfer>On</OptionInfer>
   </PropertyGroup>
   <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
+    <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>Erdinc.pfx</AssemblyOriginatorKeyFile>
@@ -90,6 +90,7 @@
   <ItemGroup>
     <Compile Include="Authorization.vb" />
     <Compile Include="ConnectionInfo.vb" />
+    <Compile Include="Conversion.vb" />
     <Compile Include="Create.vb" />
     <Compile Include="KamuDB.vb" />
     <Compile Include="LookUp.vb" />
